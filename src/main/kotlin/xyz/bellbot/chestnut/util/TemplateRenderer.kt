@@ -28,7 +28,7 @@ object TemplateRenderer {
     fun render(template: String?, tracker: Tracker, event: String, opts: RenderOptions): String {
         val base = template ?: defaultTemplate(tracker.trigger, event)
         val map = mutableMapOf<String, String>()
-        map["name"] = tracker.name
+        map["name"] = tracker.title?.takeIf { it.isNotBlank() } ?: tracker.name
         map["trigger"] = tracker.trigger.name
         map["event"] = event
         map["world"] = tracker.world

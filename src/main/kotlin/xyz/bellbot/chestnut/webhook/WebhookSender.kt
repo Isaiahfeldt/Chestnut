@@ -157,7 +157,7 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
     }
 
     private fun buildEmbedBody(job: Job): String {
-        val title = job.tracker?.name ?: "Chestnut"
+        val title = job.tracker?.let { it.title?.takeIf { s -> s.isNotBlank() } ?: it.name } ?: "Chestnut"
         val description = job.content
         val color = config.embedColor
         val ts = java.time.Instant.now().toString()

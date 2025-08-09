@@ -1,6 +1,5 @@
 package xyz.bellbot.chestnut.bind
 
-import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -21,12 +20,12 @@ class BindManager(
     private val config: ChestnutConfig,
 ) : Listener {
 
-    data class Session(val name: String, val trigger: Trigger, val owner: UUID, val started: Long)
+    data class Session(val name: String, val trigger: Trigger, val owner: UUID, val started: Long, val rebind: Boolean)
 
     private val sessions = ConcurrentHashMap<UUID, Session>()
 
     fun start(player: Player, name: String, trigger: Trigger) {
-        val s = Session(name, trigger, player.uniqueId, System.currentTimeMillis())
+        val s = Session(name, trigger, player.uniqueId, System.currentTimeMillis(), rebind = false)
         val replaced = sessions.put(player.uniqueId, s)
         if (replaced != null) player.sendMessage("§eReplacing previous bind session.")
         player.sendMessage("§aRight-click a block to bind '$name'… (60s)")
@@ -35,6 +34,23 @@ class BindManager(
             if (sessions[player.uniqueId] == s) {
                 sessions.remove(player.uniqueId)
                 player.sendMessage("§cBind session for '$name' timed out.")
+            }
+        }, 20L * 60)
+    }
+
+    fun startRebind(player: Player, name: String) {
+        val existing = store.get(name) ?: run {
+            player.sendMessage("§cTracker '$name' not found.")
+            return
+        }
+        val s = Session(name, existing.trigger, player.uniqueId, System.currentTimeMillis(), rebind = true)
+        val replaced = sessions.put(player.uniqueId, s)
+        if (replaced != null) player.sendMessage("§eReplacing previous bind/rebind session.")
+        player.sendMessage("§aRight-click the new block location for '$name'… (60s)")
+        plugin.server.scheduler.runTaskLater(plugin, Runnable {
+            if (sessions[player.uniqueId] == s) {
+                sessions.remove(player.uniqueId)
+                player.sendMessage("§cRebind session for '$name' timed out.")
             }
         }, 20L * 60)
     }
@@ -58,6 +74,23 @@ class BindManager(
         val y = loc.blockY
         val z = loc.blockZ
 
+        if (s.rebind) {
+            val t = store.get(s.name)
+            if (t == null) {
+                e.player.sendMessage("§cTracker '${s.name}' no longer exists.")
+            } else {
+                t.world = world
+                t.x = x
+                t.y = y
+                t.z = z
+                t.blockType = block.type.name
+                store.putAndSave(t)
+                e.player.sendMessage("§aRebound '${s.name}' to ${block.type.name} at `$x $y $z`.")
+            }
+            sessions.remove(e.player.uniqueId)
+            return
+        }
+
         val templates = when (s.trigger) {
             Trigger.INVENTORY_OPEN -> mutableMapOf(
                 "open" to "<user> opened <name> at <x>,<y>,<z>.",
@@ -75,6 +108,7 @@ class BindManager(
             ratelimitPerMinute = 0
         )
         val tracker = Tracker(s.name, s.trigger, world, x, y, z, templates, options, s.owner)
+        tracker.blockType = block.type.name
         store.putAndSave(tracker)
         sessions.remove(e.player.uniqueId)
         e.player.sendMessage("§aTracker '${s.name}' bound to ${block.type.name} at `$x $y $z`.")

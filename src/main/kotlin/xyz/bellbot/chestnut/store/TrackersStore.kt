@@ -29,6 +29,15 @@ class TrackersStore(private val plugin: JavaPlugin) {
         save()
     }
 
+    fun rename(oldName: String, newName: String): Boolean {
+        if (trackersByName.containsKey(newName)) return false
+        val t = trackersByName.remove(oldName) ?: return false
+        t.name = newName
+        trackersByName[newName] = t
+        save()
+        return true
+    }
+
     fun load(): Int {
         if (!file.exists()) {
             plugin.dataFolder.mkdirs()
@@ -72,6 +81,9 @@ class TrackersStore(private val plugin: JavaPlugin) {
                 continue
             }
             val tracker = Tracker(name, trigger, world!!, x, y, z, templates, options, owner)
+            tracker.title = tSec.getString("title", null)
+            tracker.description = tSec.getString("description", null)
+            tracker.blockType = tSec.getString("blockType", null)
             trackersByName[name] = tracker
             loaded++
         }
@@ -89,6 +101,9 @@ class TrackersStore(private val plugin: JavaPlugin) {
             sec.set("x", t.x)
             sec.set("y", t.y)
             sec.set("z", t.z)
+            if (!t.title.isNullOrBlank()) sec.set("title", t.title)
+            if (!t.description.isNullOrBlank()) sec.set("description", t.description)
+            if (!t.blockType.isNullOrBlank()) sec.set("blockType", t.blockType)
             val templatesSec = sec.createSection("templates")
             for ((k, v) in t.templates) templatesSec.set(k, v)
             val optSec = sec.createSection("options")

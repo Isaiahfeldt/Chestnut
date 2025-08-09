@@ -6,15 +6,18 @@ import java.util.UUID
  * Represents a single block-bound tracker with a single trigger.
  */
 data class Tracker(
-    val name: String,
+    var name: String,
     val trigger: Trigger,
-    val world: String,
-    val x: Int,
-    val y: Int,
-    val z: Int,
+    var world: String,
+    var x: Int,
+    var y: Int,
+    var z: Int,
     val templates: MutableMap<String, String> = mutableMapOf(),
     val options: TrackerOptions = TrackerOptions(),
     val owner: UUID,
+    var title: String? = null,
+    var description: String? = null,
+    var blockType: String? = null,
 ) {
     /** Last event tick for debounce. */
     @Transient var lastEventAtTick: Long = 0L
