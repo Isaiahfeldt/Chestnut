@@ -41,7 +41,9 @@ tasks.processResources {
     val props = mapOf("version" to version)
     inputs.properties(props)
     filteringCharset = "UTF-8"
-    filesMatching("paper-plugin.yml") {
+    filesMatching("plugin.yml") {
         expand(props)
     }
+    // Ensure we ship as a Bukkit-style plugin (no paper-plugin.yml)
+    exclude("paper-plugin.yml")
 }

@@ -1,0 +1,14 @@
+# Chestnut configuration
+webhookUrl: ""
+# Prefix for /track test messages
+testPrefix: "[TEST] "
+# Global rate limit (messages per minute)
+globalRateLimitPerMinute: 120
+# Default debounce ticks for new trackers
+defaultDebounceTicks: 4
+# Whether to include inventory items by default when creating trackers
+includeItemsByDefault: false
+# Enable /track test command
+enableTestCommand: true
+# Enable verbose debug logging
+debug: false
