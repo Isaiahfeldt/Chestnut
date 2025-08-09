@@ -1,0 +1,4 @@
+name: Chestnut
+version: '1.0-SNAPSHOT'
+main: xyz.bellbot.chestnut.Chestnut
+api-version: '1.21'
