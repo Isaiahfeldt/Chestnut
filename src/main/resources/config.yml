@@ -12,3 +12,9 @@ includeItemsByDefault: false
 enableTestCommand: true
 # Enable verbose debug logging
 debug: false
+
+# Discord embed customization
+# Color as decimal integer (e.g., 16763904 = 0xFFCC00)
+embedColor: 16763904
+# Footer template with placeholders (<name>, <trigger>, <world>, <x>, <y>, <z>, <time>)
+embedFooter: "<trigger> @ <world> <x>,<y>,<z>"

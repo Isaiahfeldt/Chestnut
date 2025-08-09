@@ -1,7 +1,7 @@
 package xyz.bellbot.chestnut.model
 
 enum class Trigger(val events: List<String>) {
-    INVENTORY_OPEN(listOf("open")),
+    INVENTORY_OPEN(listOf("open", "close")),
     TORCH_TOGGLE(listOf("on", "off"));
 
     companion object {

@@ -59,7 +59,10 @@ class BindManager(
         val z = loc.blockZ
 
         val templates = when (s.trigger) {
-            Trigger.INVENTORY_OPEN -> mutableMapOf("open" to "<user> opened <name> at <x>,<y>,<z>.")
+            Trigger.INVENTORY_OPEN -> mutableMapOf(
+                "open" to "<user> opened <name> at <x>,<y>,<z>.",
+                "close" to "<user> closed <name> at <x>,<y>,<z>."
+            )
             Trigger.TORCH_TOGGLE -> mutableMapOf(
                 "on" to "<name> has been lit!",
                 "off" to "<name> has turned off."

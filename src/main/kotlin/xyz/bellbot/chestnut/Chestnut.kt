@@ -42,6 +42,10 @@ class Chestnut : JavaPlugin() {
             try { store.save() } catch (e: Exception) { logger.warning("Autosave failed: ${e.message}") }
         }, 20L * 30, 20L * 30).taskId
 
+        if (configManager.webhookUrl.isBlank()) {
+            logger.warning("No webhookUrl configured. Set 'webhookUrl' in config.yml to enable Discord notifications.")
+        }
+
         logger.info("Chestnut enabled. Loaded $loaded trackers. Webhook URL configured: ${configManager.webhookUrl.isNotBlank()}")
     }
 

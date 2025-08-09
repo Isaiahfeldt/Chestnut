@@ -10,6 +10,7 @@ commands:
     description: Manage Chestnut trackers
     usage: "/track help"
     permission: chestnut.use
+    aliases: [tracker]
 permissions:
   chestnut.use:
     description: Use /track commands for owned trackers

@@ -14,7 +14,10 @@ object TemplateRenderer {
     private val isoFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
     fun defaultTemplate(trigger: Trigger, event: String): String = when (trigger) {
-        Trigger.INVENTORY_OPEN -> "<user> opened <name> at <x>,<y>,<z>."
+        Trigger.INVENTORY_OPEN -> when (event.lowercase(Locale.ROOT)) {
+            "close" -> "<user> closed <name> at <x>,<y>,<z>."
+            else -> "<user> opened <name> at <x>,<y>,<z>."
+        }
         Trigger.TORCH_TOGGLE -> when (event.lowercase(Locale.ROOT)) {
             "on" -> "<name> has been lit!"
             "off" -> "<name> has turned off."

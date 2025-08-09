@@ -29,6 +29,14 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
     @Volatile private var running = false
     private var workerThread: Thread? = null
 
+    fun onConfigReload() {
+        // Reset warnings and rate limit window to reflect new configuration cleanly
+        warnNoUrl = false
+        windowResetAt = System.currentTimeMillis() + 60_000
+        globalCount.set(0)
+        perTrackerCounts.values.forEach { it.set(0) }
+    }
+
     fun start() {
         running = true
         workerThread = Thread({
@@ -102,7 +110,7 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
             }
             return
         }
-        val body = "{\"content\":${jsonString(job.content)}}"
+        val body = buildEmbedBody(job)
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .header("Content-Type", "application/json")
@@ -146,5 +154,34 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
             .replace("\n", "\\n")
             .replace("\r", "\\r")
         return "\"$escaped\""
+    }
+
+    private fun buildEmbedBody(job: Job): String {
+        val title = job.tracker?.name ?: "Chestnut"
+        val description = job.content
+        val color = config.embedColor
+        val ts = java.time.Instant.now().toString()
+        val footerText = job.tracker?.let { t ->
+            var f = config.embedFooter
+            if (f.isNotBlank()) {
+                f = f.replace("<name>", t.name)
+                    .replace("<trigger>", t.trigger.name)
+                    .replace("<world>", t.world)
+                    .replace("<x>", t.x.toString())
+                    .replace("<y>", t.y.toString())
+                    .replace("<z>", t.z.toString())
+                    .replace("<time>", ts)
+                f
+            } else null
+        }
+        val footerJson = if (!footerText.isNullOrBlank()) ",\"footer\":{\"text\":${jsonString(footerText)}}" else ""
+        val embed = "{" +
+                "\"title\":" + jsonString(title) + "," +
+                "\"description\":" + jsonString(description) + "," +
+                "\"color\":" + color + "," +
+                "\"timestamp\":" + jsonString(ts) +
+                footerJson +
+            "}"
+        return "{\"embeds\":[" + embed + "]}"
     }
 }
