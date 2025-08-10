@@ -6,11 +6,18 @@ on mailboxes, doors, torches and more.
 
 ## Features
 
-- Track any block by standing next to it and running a command.
-- Built‑in triggers such as `INVENTORY_OPEN`, `TORCH_TOGGLE` and `LECTERN`.
+- Track supported blocks (storage containers, redstone torches, lecterns) by standing next to them and running a command.
+- Built‑in triggers such as `storage`, `redstone_torch` and `lectern`.
 - Custom message templates with placeholders like `<name>` or `<world>`.
 - Optional embed colors and thumbnail images for each event.
 - Discord webhooks sent asynchronously with rate limiting and retry.
+
+Supported block types today:
+- Storage containers (e.g., chests, barrels, shulker boxes)
+- Redstone torches
+- Lecterns
+
+More block types may be added over time.
 
 ## Installation
 
