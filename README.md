@@ -30,7 +30,8 @@ on mailboxes, doors, torches and more.
 
 ## Trigger Reference
 
-All triggers support basic tags like `<name>`, `<trigger>`, `<event>`, `<world>`, `<x>`, `<y>`, `<z>` and `<time>`. Some triggers add extra tags listed below. <br>**Note**: `<name>` defaults to the tracker's given title; otherwise it uses the tracker's id name. 
+All triggers support basic tags like `<name>`, `<trigger>`, `<event>`, `<world>`, `<x>`, `<y>`, `<z>` and `<time>`.
+<br>Some triggers add extra tags listed below. <br><br>**Note**: `<name>` defaults to the tracker's given title; otherwise it uses the tracker's id name. 
 
 
 | Trigger             | Events                                              | Extra tags                                                                                  |
