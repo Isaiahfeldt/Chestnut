@@ -24,18 +24,19 @@ on mailboxes, doors, torches and more.
 | --- | --- |
 | `/settracker <name> <trigger>` | Bind the block you're looking at to a tracker. |
 | `/edittracker <name> …` | Change messages, colors, thumbnails and more. |
-| `/trackerlist [page]` | Show all trackers. |
+| `/trackerlist [page]` | Show all trackers with an interactive menu to quickly make simple changes to trackers (based on Husk Homes). |
 | `/deltracker <name\|all>` | Remove trackers. |
 | `/chestnut <help\|reload\|status>` | Administrative actions. |
 
 ## Trigger Reference
 
-All triggers support basic tags like `<name>`, `<trigger>`, `<event>`, `<world>`, `<x>`, `<y>`, `<z>` and `<time>`. Some triggers add extra tags listed below.
+All triggers support basic tags like `<name>`, `<trigger>`, `<event>`, `<world>`, `<x>`, `<y>`, `<z>` and `<time>`. Some triggers add extra tags listed below. <br>**Note**: `<name>` defaults to the tracker's given title; otherwise it uses the tracker's id name. 
 
-| Trigger             | States | Extra tags |
-|---------------------| --- | --- |
-| `storage`           | `open`, `close` | `<user>`, `<uuid>`, `<items>` |
-| `redstone_torch`    | `on`, `off` | `<state>` (`lit` or `unlit`) |
+
+| Trigger             | Events                                              | Extra tags                                                                                  |
+|---------------------|-----------------------------------------------------|---------------------------------------------------------------------------------------------|
+| `storage`           | `open`, `close`                                     | `<user>`, `<uuid>`, `<items>`                                                               |
+| `redstone_torch`    | `on`, `off`                                         | `<state>` (`lit` or `unlit`)                                                                |
 | `lectern`           | `insert_book`, `remove_book`, `page_change`, `open` | `<user>`, `<uuid>`, `<page>`, `<book_title>`, `<book_author>`, `<book_pages>`, `<has_book>` |
 
 ## Example: Monitoring a Mailbox
