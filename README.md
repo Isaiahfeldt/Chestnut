@@ -32,11 +32,11 @@ on mailboxes, doors, torches and more.
 
 All triggers support basic tags like `<name>`, `<trigger>`, `<event>`, `<world>`, `<x>`, `<y>`, `<z>` and `<time>`. Some triggers add extra tags listed below.
 
-| Trigger | States | Extra tags |
-| --- | --- | --- |
-| `INVENTORY_OPEN` (Storage) | `open`, `close` | `<user>`, `<uuid>`, `<items>` |
-| `TORCH_TOGGLE` (Redstone Torch) | `on`, `off` | `<state>` (`lit` or `unlit`) |
-| `LECTERN` (Lectern) | `insert_book`, `remove_book`, `page_change`, `open` | `<user>`, `<uuid>`, `<page>`, `<book_title>`, `<book_author>`, `<book_pages>`, `<has_book>` |
+| Trigger             | States | Extra tags |
+|---------------------| --- | --- |
+| `storage`           | `open`, `close` | `<user>`, `<uuid>`, `<items>` |
+| `redstone_torch`    | `on`, `off` | `<state>` (`lit` or `unlit`) |
+| `lectern`           | `insert_book`, `remove_book`, `page_change`, `open` | `<user>`, `<uuid>`, `<page>`, `<book_title>`, `<book_author>`, `<book_pages>`, `<has_book>` |
 
 ## Example: Monitoring a Mailbox
 
@@ -45,12 +45,12 @@ whenever it is opened.
 
 1. Stand in front of the chest and run:
    ```
-   /settracker mailbox INVENTORY_OPEN
+   /settracker mailbox storage
    ```
 2. Customize the messages sent to Discord:
    ```
-   /edittracker mailbox msg open "<name> checked the mailbox!"
-   /edittracker mailbox msg close "<name> closed the mailbox."
+   /edittracker mailbox msg open "<user> checked the <name>!"
+   /edittracker mailbox msg close "<user> closed the <name>. Items: <items>"
    ```
 3. Add some color and icons:
    ```
