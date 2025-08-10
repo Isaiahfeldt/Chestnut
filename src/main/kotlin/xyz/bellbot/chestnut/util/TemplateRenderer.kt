@@ -13,23 +13,10 @@ import java.util.Locale
 object TemplateRenderer {
     private val isoFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
-    fun defaultTemplate(trigger: Trigger, event: String): String = when (trigger) {
-        Trigger.INVENTORY_OPEN -> when (event.lowercase(Locale.ROOT)) {
-            "close" -> "<user> closed <name> at <x>,<y>,<z>."
-            else -> "<user> opened <name> at <x>,<y>,<z>."
-        }
-        Trigger.TORCH_TOGGLE -> when (event.lowercase(Locale.ROOT)) {
-            "on" -> "<name> has been lit!"
-            "off" -> "<name> has turned off."
-            else -> "<name> event: <event>"
-        }
-        Trigger.LECTERN -> when (event.lowercase(Locale.ROOT)) {
-            "insert_book" -> "<user> placed '<book_title>' on <name>."
-            "remove_book" -> "<user> removed '<book_title>' from <name>."
-            "page_change" -> "<user> turned to page <page> of '<book_title>' on <name>."
-            "open" -> "<user> opened '<book_title>' on <name>."
-            else -> "<name> event: <event>"
-        }
+    fun defaultTemplate(trigger: Trigger, event: String): String {
+        val d = xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(trigger)
+        val key = event.lowercase(Locale.ROOT)
+        return d.defaultTemplates[key] ?: "<name> event: <event>"
     }
 
     fun render(template: String?, tracker: Tracker, event: String, opts: RenderOptions): String {

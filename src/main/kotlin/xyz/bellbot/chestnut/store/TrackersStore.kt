@@ -9,23 +9,47 @@ import xyz.bellbot.chestnut.model.TrackerOptions
 import xyz.bellbot.chestnut.model.Trigger
 import java.io.File
 import java.util.UUID
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 class TrackersStore(private val plugin: JavaPlugin) {
     private val file: File = File(plugin.dataFolder, "trackers.yml")
     private val trackersByName = ConcurrentHashMap<String, Tracker>()
+    // Fast lookup index: world|x|y|z|TRIGGER -> list of trackers
+    private val index = ConcurrentHashMap<String, MutableList<Tracker>>()
 
     fun all(): Collection<Tracker> = trackersByName.values
     fun get(name: String): Tracker? = trackersByName[name]
     fun exists(name: String): Boolean = trackersByName.containsKey(name)
 
+    private fun makeKey(world: String, x: Int, y: Int, z: Int, trigger: Trigger): String = "$world|$x|$y|$z|${'$'}{trigger.name}"
+
+    private fun indexTracker(t: Tracker) {
+        val key = makeKey(t.world, t.x, t.y, t.z, t.trigger)
+        if (t.indexKey == key) return
+        // Remove from previous bucket if present
+        t.indexKey?.let { old -> index[old]?.remove(t) }
+        val list = index.computeIfAbsent(key) { Collections.synchronizedList(mutableListOf()) }
+        if (!list.contains(t)) list.add(t)
+        t.indexKey = key
+    }
+
+    private fun deindexTracker(t: Tracker) {
+        t.indexKey?.let { old -> index[old]?.remove(t) }
+        t.indexKey = null
+    }
+
+    fun byLocationAndTrigger(world: String, x: Int, y: Int, z: Int, trigger: Trigger): List<Tracker> =
+        index[makeKey(world, x, y, z, trigger)]?.toList() ?: emptyList()
+
     fun putAndSave(tracker: Tracker) {
         trackersByName[tracker.name] = tracker
+        indexTracker(tracker)
         save()
     }
 
     fun removeAndSave(name: String) {
-        trackersByName.remove(name)
+        trackersByName.remove(name)?.let { deindexTracker(it) }
         save()
     }
 
@@ -102,6 +126,7 @@ class TrackersStore(private val plugin: JavaPlugin) {
                 if (!url.isNullOrBlank()) tracker.embedThumbnails[key.lowercase()] = url
             }
             trackersByName[name] = tracker
+            indexTracker(tracker)
             loaded++
         }
         plugin.logger.info("Loaded $loaded trackers. Worlds loaded: ${Bukkit.getWorlds().size}")

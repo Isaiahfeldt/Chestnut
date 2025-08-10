@@ -27,4 +27,7 @@ data class Tracker(
 
     /** Cached last torch lit state for TORCH_TOGGLE */
     @Transient var lastTorchLit: Boolean? = null
+
+    /** Internal: index key for fast location lookup (world|x|y|z|TRIGGER) */
+    @Transient var indexKey: String? = null
 }
