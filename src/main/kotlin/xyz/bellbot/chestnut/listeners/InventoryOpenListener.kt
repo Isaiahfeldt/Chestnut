@@ -48,7 +48,7 @@ class InventoryOpenListener(
                         testPrefix = null
                     )
                 )
-                webhook.enqueue(t, rendered)
+                webhook.enqueue(t, rendered, "open")
             }
         }
     }
@@ -82,7 +82,7 @@ class InventoryOpenListener(
                         testPrefix = null
                     )
                 )
-                webhook.enqueue(t, rendered)
+                webhook.enqueue(t, rendered, "close")
             }
         }
     }

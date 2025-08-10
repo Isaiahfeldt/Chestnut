@@ -3,20 +3,18 @@
 Chestnut – Track any block in Minecraft and send custom Discord webhook alerts when it’s opened, toggled, or changes state.
 
 ## Features
-- Track a specific block location with a chosen trigger (INVENTORY_OPEN, TORCH_TOGGLE)
+- Track a specific block location with a chosen trigger (INVENTORY_OPEN, TORCH_TOGGLE, LECTERN)
 - Custom per-event message templates with placeholders
 - Async Discord webhook delivery with rate limits and retries
 - Debounce to avoid spam
 - Simple persistence to trackers.yml
 
 ## Commands
-- /track add <name> <trigger>
-- /track msg <name> <event> "<template>"
-- /track list
-- /track remove <name>
-- /track test <name> <event>
-- /track set <name> <key> <value>
-- /track help
+- /trackerlist [page] (alias: /trackers)
+- /settracker <name> <trigger>
+- /deltracker <name|all> [--confirm]
+- /edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail>
+- /chestnut <help|reload|status>
 
 Permissions:
 - chestnut.use

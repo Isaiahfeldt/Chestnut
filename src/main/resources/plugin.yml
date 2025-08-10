@@ -6,14 +6,34 @@ author: Penicilin
 website: https://bellbot.xyz
 api-version: '1.21'
 commands:
-  track:
-    description: Manage Chestnut trackers
-    usage: "/track help"
+  settracker:
+    description: Create a tracker by starting a bind session
+    usage: "/settracker <name> <trigger>"
     permission: chestnut.use
-    aliases: [tracker]
+    aliases: [settrack]
+  deltracker:
+    description: Delete a tracker (use --confirm). Use 'all' to delete all (admin only).
+    usage: "/deltracker <name|all> [--confirm]"
+    permission: chestnut.use
+    aliases: [delt]
+  edittracker:
+    description: Edit a tracker
+    usage: "/edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail>"
+    permission: chestnut.use
+    aliases: [edittrack]
+  trackerlist:
+    description: List trackers (read-only)
+    usage: "/trackerlist [page]"
+    permission: chestnut.use
+    aliases: [trackers]
+  chestnut:
+    description: Admin tasks for Chestnut
+    usage: "/chestnut <help|reload|status>"
+    permission: chestnut.admin
+    aliases: [trackeradmin, tadmin]
 permissions:
   chestnut.use:
-    description: Use /track commands for owned trackers
+    description: Use Chestnut commands for owned trackers
     default: true
   chestnut.admin:
     description: Administer any tracker and manage plugin

@@ -23,6 +23,13 @@ object TemplateRenderer {
             "off" -> "<name> has turned off."
             else -> "<name> event: <event>"
         }
+        Trigger.LECTERN -> when (event.lowercase(Locale.ROOT)) {
+            "insert_book" -> "<user> placed '<book_title>' on <name>."
+            "remove_book" -> "<user> removed '<book_title>' from <name>."
+            "page_change" -> "<user> turned to page <page> of '<book_title>' on <name>."
+            "open" -> "<user> opened '<book_title>' on <name>."
+            else -> "<name> event: <event>"
+        }
     }
 
     fun render(template: String?, tracker: Tracker, event: String, opts: RenderOptions): String {
@@ -40,6 +47,11 @@ object TemplateRenderer {
         map["user"] = opts.user ?: ""
         map["uuid"] = opts.uuid ?: ""
         map["items"] = if (opts.includeItems && opts.inventory != null) summarizeInventory(opts.inventory) else ""
+        map["page"] = opts.page?.toString() ?: ""
+        map["book_title"] = opts.bookTitle ?: ""
+        map["book_author"] = opts.bookAuthor ?: ""
+        map["book_pages"] = opts.bookPages?.toString() ?: ""
+        map["has_book"] = opts.hasBook?.toString() ?: ""
 
         var out = base
         for ((k, v) in map) {
@@ -73,5 +85,11 @@ object TemplateRenderer {
         val includeItems: Boolean = false,
         val inventory: Inventory? = null,
         val testPrefix: String? = null,
+        // Lectern-specific
+        val page: Int? = null,
+        val bookTitle: String? = null,
+        val bookAuthor: String? = null,
+        val bookPages: Int? = null,
+        val hasBook: Boolean? = null,
     )
 }

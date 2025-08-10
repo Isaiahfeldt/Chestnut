@@ -100,6 +100,12 @@ class BindManager(
                 "on" to "<name> has been lit!",
                 "off" to "<name> has turned off."
             )
+            Trigger.LECTERN -> mutableMapOf(
+                "insert_book" to "<user> placed '<book_title>' on <name>.",
+                "remove_book" to "<user> removed '<book_title>' from <name>.",
+                "page_change" to "<user> turned to page <page> of '<book_title>' on <name>.",
+                "open" to "<user> opened '<book_title>' on <name>."
+            )
         }
         val options = TrackerOptions(
             enabled = true,

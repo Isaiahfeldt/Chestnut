@@ -1,6 +1,6 @@
 # Chestnut configuration
 webhookUrl: ""
-# Prefix for /track test messages
+# Prefix for test messages (used by /edittracker <name> test <event>)
 testPrefix: "[TEST] "
 # Global rate limit (messages per minute)
 globalRateLimitPerMinute: 120
