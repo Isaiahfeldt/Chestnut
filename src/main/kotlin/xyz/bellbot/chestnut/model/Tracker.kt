@@ -18,6 +18,9 @@ data class Tracker(
     var title: String? = null,
     var description: String? = null,
     var blockType: String? = null,
+    // Per-event embed customization
+    val embedColors: MutableMap<String, Int> = mutableMapOf(),
+    val embedThumbnails: MutableMap<String, String> = mutableMapOf(),
 ) {
     /** Last event tick for debounce. */
     @Transient var lastEventAtTick: Long = 0L

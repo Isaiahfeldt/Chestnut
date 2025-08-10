@@ -66,7 +66,7 @@ class TrackersStore(private val plugin: JavaPlugin) {
             val templates = mutableMapOf<String, String>()
             val templatesSec = tSec.getConfigurationSection("templates")
             templatesSec?.getKeys(false)?.forEach { key ->
-                templates[key] = templatesSec.getString(key, "") ?: ""
+                templates[key.lowercase()] = templatesSec.getString(key, "") ?: ""
             }
             val optSec = tSec.getConfigurationSection("options")
             val options = TrackerOptions(
@@ -84,6 +84,23 @@ class TrackersStore(private val plugin: JavaPlugin) {
             tracker.title = tSec.getString("title", null)
             tracker.description = tSec.getString("description", null)
             tracker.blockType = tSec.getString("blockType", null)
+            // Load per-event embed colors (ints) and thumbnails (urls)
+            val colorsSec = tSec.getConfigurationSection("embedColors")
+            colorsSec?.getKeys(false)?.forEach { key ->
+                val raw = colorsSec.getString(key, null)
+                if (raw != null) {
+                    val parsed = raw.toIntOrNull()
+                    if (parsed != null) tracker.embedColors[key.lowercase()] = parsed
+                } else {
+                    val intVal = colorsSec.getInt(key, Int.MIN_VALUE)
+                    if (intVal != Int.MIN_VALUE) tracker.embedColors[key.lowercase()] = intVal
+                }
+            }
+            val thumbsSec = tSec.getConfigurationSection("embedThumbnails")
+            thumbsSec?.getKeys(false)?.forEach { key ->
+                val url = thumbsSec.getString(key, null)
+                if (!url.isNullOrBlank()) tracker.embedThumbnails[key.lowercase()] = url
+            }
             trackersByName[name] = tracker
             loaded++
         }
@@ -106,6 +123,10 @@ class TrackersStore(private val plugin: JavaPlugin) {
             if (!t.blockType.isNullOrBlank()) sec.set("blockType", t.blockType)
             val templatesSec = sec.createSection("templates")
             for ((k, v) in t.templates) templatesSec.set(k, v)
+            val colorsSec = sec.createSection("embedColors")
+            for ((k, v) in t.embedColors) colorsSec.set(k, v)
+            val thumbsSec = sec.createSection("embedThumbnails")
+            for ((k, v) in t.embedThumbnails) thumbsSec.set(k, v)
             val optSec = sec.createSection("options")
             optSec.set("enabled", t.options.enabled)
             optSec.set("debounceTicks", t.options.debounceTicks)

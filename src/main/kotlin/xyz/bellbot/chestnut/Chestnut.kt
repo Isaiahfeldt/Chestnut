@@ -5,6 +5,7 @@ import xyz.bellbot.chestnut.bind.BindManager
 import xyz.bellbot.chestnut.commands.TrackCommand
 import xyz.bellbot.chestnut.listeners.InventoryOpenListener
 import xyz.bellbot.chestnut.listeners.TorchToggleListener
+import xyz.bellbot.chestnut.listeners.LecternListener
 import xyz.bellbot.chestnut.store.TrackersStore
 import xyz.bellbot.chestnut.webhook.WebhookSender
 
@@ -31,11 +32,20 @@ class Chestnut : JavaPlugin() {
         server.pluginManager.registerEvents(bindManager, this)
         server.pluginManager.registerEvents(InventoryOpenListener(this, store, configManager, webhook), this)
         server.pluginManager.registerEvents(TorchToggleListener(this, store, configManager, webhook), this)
+        server.pluginManager.registerEvents(LecternListener(this, store, configManager, webhook), this)
 
         // Commands
         val track = TrackCommand(this, configManager, store, bindManager, webhook)
-        getCommand("track")?.setExecutor(track)
-        getCommand("track")?.tabCompleter = track
+        getCommand("settracker")?.setExecutor(track)
+        getCommand("settracker")?.tabCompleter = track
+        getCommand("deltracker")?.setExecutor(track)
+        getCommand("deltracker")?.tabCompleter = track
+        getCommand("edittracker")?.setExecutor(track)
+        getCommand("edittracker")?.tabCompleter = track
+        getCommand("trackerlist")?.setExecutor(track)
+        getCommand("trackerlist")?.tabCompleter = track
+        getCommand("chestnut")?.setExecutor(track)
+        getCommand("chestnut")?.tabCompleter = track
 
         // Autosave every 30s async
         autosaveTaskId = server.scheduler.runTaskTimerAsynchronously(this, Runnable {

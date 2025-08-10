@@ -18,7 +18,7 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
         .connectTimeout(Duration.ofSeconds(10))
         .build()
 
-    data class Job(val tracker: Tracker?, val content: String)
+    data class Job(val tracker: Tracker?, val content: String, val event: String?)
 
     private val queue = LinkedBlockingQueue<Job>()
     private val perTrackerCounts = ConcurrentHashMap<String, AtomicInteger>()
@@ -72,7 +72,12 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
     }
 
     fun enqueue(tracker: Tracker?, content: String) {
-        queue.offer(Job(tracker, content))
+        // Backward-compatible enqueue without event context
+        queue.offer(Job(tracker, content, null))
+    }
+
+    fun enqueue(tracker: Tracker?, content: String, event: String?) {
+        queue.offer(Job(tracker, content, event?.lowercase()))
     }
 
     private fun enforceRateLimits(tracker: Tracker?) {
@@ -159,7 +164,10 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
     private fun buildEmbedBody(job: Job): String {
         val title = job.tracker?.let { it.title?.takeIf { s -> s.isNotBlank() } ?: it.name } ?: "Chestnut"
         val description = job.content
-        val color = config.embedColor
+        val eventKey = job.event?.lowercase()
+        val color = job.tracker?.let { t ->
+            if (eventKey != null) t.embedColors[eventKey] ?: config.embedColor else config.embedColor
+        } ?: config.embedColor
         val ts = java.time.Instant.now().toString()
         val footerText = job.tracker?.let { t ->
             var f = config.embedFooter
@@ -175,12 +183,17 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
             } else null
         }
         val footerJson = if (!footerText.isNullOrBlank()) ",\"footer\":{\"text\":${jsonString(footerText)}}" else ""
+        val thumbUrl = job.tracker?.let { t ->
+            if (eventKey != null) t.embedThumbnails[eventKey] else null
+        }
+        val thumbJson = if (!thumbUrl.isNullOrBlank()) ",\"thumbnail\":{\"url\":" + jsonString(thumbUrl) + "}" else ""
         val embed = "{" +
                 "\"title\":" + jsonString(title) + "," +
                 "\"description\":" + jsonString(description) + "," +
                 "\"color\":" + color + "," +
                 "\"timestamp\":" + jsonString(ts) +
                 footerJson +
+                thumbJson +
             "}"
         return "{\"embeds\":[" + embed + "]}"
     }
