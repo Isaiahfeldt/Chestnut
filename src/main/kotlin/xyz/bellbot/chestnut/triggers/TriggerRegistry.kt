@@ -7,25 +7,23 @@ import xyz.bellbot.chestnut.model.Trigger
  * across commands, renderer defaults, and bind defaults.
  */
  data class TriggerDescriptor(
-     val id: String,
-     val displayName: String,
-     val aliases: List<String>,
-     val trigger: Trigger,
-     val events: List<String>,
-     val extraPlaceholders: List<String>,
-     val defaultTemplates: Map<String, String>,
-     val examples: Map<String, List<String>>
+    val id: String,
+    val displayName: String,
+    val trigger: Trigger,
+    val events: List<String>,
+    val extraPlaceholders: List<String>,
+    val defaultTemplates: Map<String, String>,
+    val examples: Map<String, List<String>>
  )
 
 object TriggerRegistry {
     private val descriptors: List<TriggerDescriptor>
-    private val byIdOrAlias: Map<String, TriggerDescriptor>
+    private val byId: Map<String, TriggerDescriptor>
 
     init {
         val inventory = TriggerDescriptor(
-            id = "inventory_open",
-            displayName = "⚙ Inventory Open",
-            aliases = listOf("INVENTORY_OPEN", "inventory", "container", "inv"),
+            id = "storage",
+            displayName = "🧰 Storage",
             trigger = Trigger.INVENTORY_OPEN,
             events = Trigger.INVENTORY_OPEN.events,
             extraPlaceholders = listOf("<user>", "<uuid>", "<items>"),
@@ -45,9 +43,8 @@ object TriggerRegistry {
             )
         )
         val torch = TriggerDescriptor(
-            id = "torch_toggle",
-            displayName = "🔦 Torch Toggle",
-            aliases = listOf("TORCH_TOGGLE", "torch"),
+            id = "redstone_torch",
+            displayName = "🔴 Redstone Torch",
             trigger = Trigger.TORCH_TOGGLE,
             events = Trigger.TORCH_TOGGLE.events,
             extraPlaceholders = listOf("<state>"),
@@ -63,7 +60,6 @@ object TriggerRegistry {
         val lectern = TriggerDescriptor(
             id = "lectern",
             displayName = "📖 Lectern",
-            aliases = listOf("LECTERN", "bookstand"),
             trigger = Trigger.LECTERN,
             events = Trigger.LECTERN.events,
             extraPlaceholders = listOf("<user>", "<uuid>", "<page>", "<book_title>", "<book_author>", "<book_pages>", "<has_book>"),
@@ -96,21 +92,17 @@ object TriggerRegistry {
         val map = HashMap<String, TriggerDescriptor>()
         for (d in descriptors) {
             map[d.id.lowercase()] = d
-            map[d.trigger.name.lowercase()] = d
-            for (a in d.aliases) map[a.lowercase()] = d
         }
-        byIdOrAlias = map
+        byId = map
     }
 
     fun all(): List<TriggerDescriptor> = descriptors
 
     fun descriptor(trigger: Trigger): TriggerDescriptor = descriptors.first { it.trigger == trigger }
 
-    fun resolve(input: String): Trigger? = byIdOrAlias[input.trim().lowercase()]?.trigger
+    fun resolve(input: String): Trigger? = byId[input.trim().lowercase()]?.trigger
 
     fun allTriggerInputs(): List<String> = descriptors
-        .flatMap { d -> listOf(d.id, d.trigger.name) + d.aliases }
-        .map { it.lowercase() }
-        .distinct()
+        .map { it.id }
         .sorted()
 }

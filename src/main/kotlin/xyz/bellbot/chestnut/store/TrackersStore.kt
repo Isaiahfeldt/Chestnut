@@ -77,7 +77,7 @@ class TrackersStore(private val plugin: JavaPlugin) {
                 continue
             }
             val triggerStr = tSec.getString("trigger")
-            val trigger = triggerStr?.let { Trigger.fromString(it) }
+            val trigger = triggerStr?.let { xyz.bellbot.chestnut.triggers.TriggerRegistry.resolve(it) ?: Trigger.fromString(it) }
             val world = tSec.getString("world")
             val x = tSec.getInt("x", Int.MIN_VALUE)
             val y = tSec.getInt("y", Int.MIN_VALUE)
@@ -138,7 +138,8 @@ class TrackersStore(private val plugin: JavaPlugin) {
         val root = yml.createSection("trackers")
         trackersByName.values.sortedBy { it.name.lowercase() }.forEach { t ->
             val sec = root.createSection(t.name)
-            sec.set("trigger", t.trigger.name)
+            // Save canonical lowercase trigger id
+            sec.set("trigger", xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(t.trigger).id)
             sec.set("world", t.world)
             sec.set("x", t.x)
             sec.set("y", t.y)

@@ -23,7 +23,7 @@ object TemplateRenderer {
         val base = template ?: defaultTemplate(tracker.trigger, event)
         val map = mutableMapOf<String, String>()
         map["name"] = tracker.title?.takeIf { it.isNotBlank() } ?: tracker.name
-        map["trigger"] = tracker.trigger.name
+        map["trigger"] = xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(tracker.trigger).id
         map["event"] = event
         map["world"] = tracker.world
         map["x"] = tracker.x.toString()

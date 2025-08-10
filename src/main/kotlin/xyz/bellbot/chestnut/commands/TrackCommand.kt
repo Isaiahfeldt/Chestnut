@@ -265,7 +265,7 @@ class TrackCommand(
                 var i = from + 1
                 all.subList(from, to).forEach { t ->
                     val status = if (t.options.enabled) "enabled" else "disabled"
-                    sender.sendMessage("§7${i++}) §b${t.name} §7 ${t.trigger} §8${t.world} ${t.x} ${t.y} ${t.z} §7[${status}]")
+                    sender.sendMessage("§7${i++}) §b${t.name} §7 ${TriggerRegistry.descriptor(t.trigger).id} §8${t.world} ${t.x} ${t.y} ${t.z} §7[${status}]")
                 }
                 sender.sendMessage("§bPage ${reqPage}/${maxPage}")
             }
@@ -306,7 +306,7 @@ class TrackCommand(
                 if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission."); return true }
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track add <name> <trigger>"); return true }
                 val name = args[1]
-                val trigger = Trigger.fromString(args[2]) ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${Trigger.entries.joinToString(", ") { it.name }}"); return true }
+                val trigger = TriggerRegistry.resolve(args[2]) ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"); return true }
                 if (!namePattern.matcher(name).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
                 if (store.exists(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
                 bind.start(sender, name, trigger)
@@ -625,7 +625,7 @@ class TrackCommand(
             .append(Component.text(ownerName, TextColor.fromHexString("#a6a6a6")))
             .append(Component.text("  ", TextColor.fromHexString("#a6a6a6")))
             .append(Component.text("⚙ ", TextColor.fromHexString("#a6a6a6")))
-            .append(Component.text(t.trigger.name.lowercase(), TextColor.fromHexString("#a6a6a6")))
+            .append(Component.text(TriggerRegistry.descriptor(t.trigger).id, TextColor.fromHexString("#a6a6a6")))
             .append(Component.text("  ", TextColor.fromHexString("#a6a6a6")))
             .append(
                 Component.text(
@@ -690,7 +690,7 @@ class TrackCommand(
         sender.sendMessage("§fViewing details for tracker: §b$title")
         if (title != t.name) sender.sendMessage("§7Internal name: §f${t.name}")
         sender.sendMessage("§7Owner: §f${t.owner}")
-        sender.sendMessage("§7Trigger: §e${t.trigger}")
+        sender.sendMessage("§7Trigger: §e${TriggerRegistry.descriptor(t.trigger).id}")
         sender.sendMessage("§7Block: §f${t.blockType ?: "Block"}")
         sender.sendMessage("§6📍 ${t.world}, ${t.x}, ${t.y}, ${t.z}")
     }
@@ -703,7 +703,7 @@ class TrackCommand(
         sender.sendMessage("§e/edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail> §7- Edit hub")
         sender.sendMessage("§7Examples: §f/edittracker mailbox rename mailbox_v2 §7· §f/edittracker mailbox msg open \"<name> opened\"")
         if (sender.hasPermission("chestnut.admin")) sender.sendMessage("§e/chestnut <help|reload|status> §7- Admin tools")
-        sender.sendMessage("§7Inventory events: open, close · Torch events: on, off · Lectern events: insert_book, remove_book, page_change, open")
+        sender.sendMessage("§7Storage events: open, close · Redstone Torch events: on, off · Lectern events: insert_book, remove_book, page_change, open")
         sender.sendMessage("§7Placeholders: <name> <trigger> <event> <world> <x> <y> <z> <time> <state> <user> <uuid> <items> <page> <book_title> <book_author> <book_pages> <has_book>")
     }
 
