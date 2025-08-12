@@ -1,6 +1,6 @@
 # Chestnut
 
-Chestnut is a friendly Minecraft plugin that watches specific blocks and
+Chestnut is a Minecraft plugin that watches specific blocks and
 sends Discord messages when something happens to them. Use it to keep an eye
 on mailboxes, doors, torches and more.
 
