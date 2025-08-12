@@ -1,20 +1,41 @@
 # Chestnut configuration
 webhookUrl: ""
+
 # Prefix for test messages (used by /edittracker <name> test <event>)
 testPrefix: "[TEST] "
+
 # Global rate limit (messages per minute)
 globalRateLimitPerMinute: 120
+
 # Default debounce ticks for new trackers
 defaultDebounceTicks: 4
+
 # Whether to include inventory items by default when creating trackers
 includeItemsByDefault: false
+
 # Enable /track test command
 enableTestCommand: true
+
 # Enable verbose debug logging
 debug: false
 
-# Discord embed customization
-# Color as decimal integer (e.g., 16763904 = 0xFFCC00)
-embedColor: 16763904
-# Footer template with placeholders (<name>, <trigger>, <world>, <x>, <y>, <z>, <time>)
+# Default Discord embed color
+# This color is used for all webhook embeds unless overridden on a per-tracker basis.
+# Supported formats:
+# - Hex string: "#RRGGBB" (e.g., "#FFCC00")
+# - Hex with 0x prefix: "0xRRGGBB" (e.g., "0xFFCC00")
+# - Decimal integer: 16763904
+embedColor: "#FFCC00"
+
+# Footer text template for webhook embeds.
+# You can use placeholders: <name>, <trigger>, <world>, <x>, <y>, <z>
+# A timestamp is always appended to the end of the footer.
+#
+# Examples:
+#   embedFooter: "<trigger> @ <world> <x>,<y>,<z>"
+#     → Renders like: "REDSTONE_TORCH @ world -606,88,190 • 8/12/2025 12:54 AM"
+#   embedFooter: "The <name> on <world> (<x>,<y>,<z>)"
+#     → Renders like: "The mailbox on world (-606,88,190) • 8/12/2025 12:54 AM"
+#   embedFooter: ""
+#     → Renders like: "8/12/2025 12:54 AM" (timestamp only)
 embedFooter: "<trigger> @ <world> <x>,<y>,<z>"
