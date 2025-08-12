@@ -96,7 +96,6 @@ class TrackersStore(private val plugin: JavaPlugin) {
             val options = TrackerOptions(
                 enabled = optSec?.getBoolean("enabled", true) ?: true,
                 debounceTicks = optSec?.getInt("debounceTicks", 4) ?: 4,
-                includeItems = optSec?.getBoolean("includeItems", false) ?: false,
                 ratelimitPerMinute = optSec?.getInt("ratelimitPerMinute", 0) ?: 0,
             )
             val owner = try { UUID.fromString(ownerStr) } catch (e: Exception) { null }
@@ -156,7 +155,6 @@ class TrackersStore(private val plugin: JavaPlugin) {
             val optSec = sec.createSection("options")
             optSec.set("enabled", t.options.enabled)
             optSec.set("debounceTicks", t.options.debounceTicks)
-            optSec.set("includeItems", t.options.includeItems)
             optSec.set("ratelimitPerMinute", t.options.ratelimitPerMinute)
             sec.set("owner", t.owner.toString())
         }

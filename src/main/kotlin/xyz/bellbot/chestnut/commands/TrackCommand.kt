@@ -462,9 +462,8 @@ class TrackCommand(
                 when (args[2].lowercase()) {
                     "enabled" -> tracker.options.enabled = args[3].toBooleanStrictOrNull() ?: return badValue(sender)
                     "debounceticks" -> tracker.options.debounceTicks = args[3].toIntOrNull() ?: return badValue(sender)
-                    "includeitems" -> tracker.options.includeItems = args[3].toBooleanStrictOrNull() ?: return badValue(sender)
                     "ratelimitperminute" -> tracker.options.ratelimitPerMinute = args[3].toIntOrNull() ?: return badValue(sender)
-                    else -> { sender.sendMessage("§cUnknown key. Keys: enabled, debounceTicks, includeItems, ratelimitPerMinute"); return true }
+                    else -> { sender.sendMessage("§cUnknown key. Keys: enabled, debounceTicks, ratelimitPerMinute"); return true }
                 }
                 store.putAndSave(tracker)
                 sender.sendMessage("§aUpdated options for '${tracker.name}'.")
@@ -813,9 +812,9 @@ class TrackCommand(
             "set" -> {
                 return when (args.size) {
                     2 -> filter(store.all().map { it.name }, args[1])
-                    3 -> filter(listOf("enabled", "debounceTicks", "includeItems", "ratelimitPerMinute"), args[2])
+                    3 -> filter(listOf("enabled", "debounceTicks", "ratelimitPerMinute"), args[2])
                     4 -> when (args[2].lowercase()) {
-                        "enabled", "includeitems" -> filter(listOf("true", "false"), args[3])
+                        "enabled" -> filter(listOf("true", "false"), args[3])
                         else -> mutableListOf()
                     }
                     else -> mutableListOf()

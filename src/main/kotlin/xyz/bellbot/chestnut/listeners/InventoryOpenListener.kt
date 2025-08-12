@@ -19,6 +19,11 @@ class InventoryOpenListener(
     private val webhook: WebhookSender,
 ) : Listener {
 
+    private fun needsItems(bodyTemplate: String?, footerTemplate: String): Boolean {
+        fun hasItems(s: String?): Boolean = s?.contains("<items>", ignoreCase = true) == true
+        return hasItems(bodyTemplate) || hasItems(footerTemplate)
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onInventoryOpen(e: InventoryOpenEvent) {
         val loc = e.inventory.location ?: return
@@ -35,19 +40,28 @@ class InventoryOpenListener(
             val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
             if (now - t.lastEventAtTick < debounceMs) continue
             t.lastEventAtTick = now
+            val bodyTpl = t.templates["open"]
+            val wantsItems = needsItems(bodyTpl, config.embedFooter)
+            val includeItems = wantsItems
             val rendered = TemplateRenderer.render(
-                t.templates["open"],
+                bodyTpl,
                 t,
                 "open",
                 TemplateRenderer.RenderOptions(
                     user = player.name,
                     uuid = player.uniqueId.toString(),
-                    includeItems = t.options.includeItems,
-                    inventory = e.inventory,
+                    includeItems = includeItems,
+                    inventory = if (includeItems) e.inventory else null,
                     testPrefix = null
                 )
             )
-            webhook.enqueue(t, rendered, "open")
+            val itemsSummary = if (includeItems) TemplateRenderer.render(
+                "<items>",
+                t,
+                "open",
+                TemplateRenderer.RenderOptions(includeItems = true, inventory = e.inventory)
+            ) else null
+            webhook.enqueue(t, rendered, "open", itemsSummary)
         }
     }
 
@@ -67,19 +81,28 @@ class InventoryOpenListener(
             val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
             if (now - t.lastEventAtTick < debounceMs) continue
             t.lastEventAtTick = now
+            val bodyTpl = t.templates["close"]
+            val wantsItems = needsItems(bodyTpl, config.embedFooter)
+            val includeItems = wantsItems
             val rendered = TemplateRenderer.render(
-                t.templates["close"],
+                bodyTpl,
                 t,
                 "close",
                 TemplateRenderer.RenderOptions(
                     user = player.name,
                     uuid = player.uniqueId.toString(),
-                    includeItems = t.options.includeItems,
-                    inventory = e.inventory,
+                    includeItems = includeItems,
+                    inventory = if (includeItems) e.inventory else null,
                     testPrefix = null
                 )
             )
-            webhook.enqueue(t, rendered, "close")
+            val itemsSummary = if (includeItems) TemplateRenderer.render(
+                "<items>",
+                t,
+                "close",
+                TemplateRenderer.RenderOptions(includeItems = true, inventory = e.inventory)
+            ) else null
+            webhook.enqueue(t, rendered, "close", itemsSummary)
         }
     }
 }

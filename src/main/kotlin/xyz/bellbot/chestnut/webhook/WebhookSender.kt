@@ -18,7 +18,7 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
         .connectTimeout(Duration.ofSeconds(10))
         .build()
 
-    data class Job(val tracker: Tracker?, val content: String, val event: String?)
+    data class Job(val tracker: Tracker?, val content: String, val event: String?, val itemsSummary: String?)
 
     private val queue = LinkedBlockingQueue<Job>()
     private val perTrackerCounts = ConcurrentHashMap<String, AtomicInteger>()
@@ -73,11 +73,15 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
 
     fun enqueue(tracker: Tracker?, content: String) {
         // Backward-compatible enqueue without event context
-        queue.offer(Job(tracker, content, null))
+        queue.offer(Job(tracker, content, null, null))
     }
 
     fun enqueue(tracker: Tracker?, content: String, event: String?) {
-        queue.offer(Job(tracker, content, event?.lowercase()))
+        queue.offer(Job(tracker, content, event?.lowercase(), null))
+    }
+
+    fun enqueue(tracker: Tracker?, content: String, event: String?, itemsSummary: String?) {
+        queue.offer(Job(tracker, content, event?.lowercase(), itemsSummary))
     }
 
     private fun enforceRateLimits(tracker: Tracker?) {
@@ -179,6 +183,8 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
                     .replace("<y>", t.y.toString())
                     .replace("<z>", t.z.toString())
                     .replace("<time>", ts)
+                    .replace("<event>", (job.event ?: ""))
+                    .replace("<items>", (job.itemsSummary ?: ""))
                 f
             } else null
         }

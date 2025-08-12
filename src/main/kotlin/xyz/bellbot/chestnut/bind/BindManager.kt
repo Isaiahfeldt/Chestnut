@@ -96,7 +96,6 @@ class BindManager(
         val options = TrackerOptions(
             enabled = true,
             debounceTicks = config.defaultDebounceTicks,
-            includeItems = config.includeItemsByDefault,
             ratelimitPerMinute = 0
         )
         val tracker = Tracker(s.name, s.trigger, world, x, y, z, templates, options, s.owner)

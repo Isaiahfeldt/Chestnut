@@ -10,8 +10,6 @@ globalRateLimitPerMinute: 120
 # Default debounce ticks for new trackers
 defaultDebounceTicks: 4
 
-# Whether to include inventory items by default when creating trackers
-includeItemsByDefault: false
 
 # Enable /track test command
 enableTestCommand: true
