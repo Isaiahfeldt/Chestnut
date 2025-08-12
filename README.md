@@ -12,7 +12,7 @@ on mailboxes, doors, torches and more.
 - Optional embed colors and thumbnail images for each event.
 - Discord webhooks sent asynchronously with rate limiting and retry.
 
-Supported block types today:
+Supported block types:
 - Storage containers (e.g., chests, barrels, shulker boxes)
 - Redstone torches
 - Lecterns
