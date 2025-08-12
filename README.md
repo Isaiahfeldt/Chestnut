@@ -12,7 +12,7 @@ can be fully tailored to match your style and needs.
 
 - Track supported blocks (storage containers, redstone torches, lecterns) by standing next to them and running a command.
 - Built‑in triggers such as `storage`, `redstone_torch` and `lectern`.
-- Custom message templates with placeholders like `<name>`, `<world>`, `<time>`, or `<page>`.
+- Custom message templates with placeholders like `<name>`, `<world>`, `<time>`, `<page>`, and more.
 - Optional embed colors and thumbnail images for each event.
 - Discord webhooks sent asynchronously with rate limiting and retry.
 
@@ -110,7 +110,7 @@ URL, and rate limits. The file includes comments for each option.
 ## FAQ
 
 **Q: Can I use this plugin on a server that already has a Discord bot?**
-<br>Yes, absolutely. Chestnut works independently — it sends webhook messages directly to Discord. It doesn’t need to connect to or control an existing bot, so it won’t interfere with whatever your bot is doing.
+<br>Yes, absolutely. Chestnut works independently, it sends webhook messages directly to Discord. It doesn’t need to connect to or control an existing bot, so it won’t interfere with whatever your bot is doing.
 
 **Q: Does Chestnut only work with Discord?**
 <br>Yes. Right now Chestnut sends webhook messages in a format designed for Discord. This could possibly be extended to other services in the future.
@@ -122,4 +122,7 @@ URL, and rate limits. The file includes comments for each option.
 <br>Not at this time. Chestnut supports a single webhook URL per server configuration. I would like to add support for multiple channels in the future.
 
 **Q: Why don’t my alerts look like the example screenshots?**
-Out of the box, Chestnut uses simple default messages without custom colors or thumbnails. The examples in the screenshots use customized settings configured with /edittracker commands.
+<br>Out of the box, Chestnut uses simple default messages without custom colors or thumbnails. The examples in the screenshots use customized settings configured with `/edittracker` commands.
+
+**Q: I found a bunch of bugs! 🐛**
+<br>lol yeah… this is my first plugin :) i’m still figuring stuff out... 
