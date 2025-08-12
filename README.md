@@ -62,7 +62,7 @@ whenever it is opened.
    /settracker mailbox storage  
    ```
 
-    * **mailbox** = the name you give this tracker (for your list and commands)
+    * **mailbox** = the name you give this tracker
     * **storage** = what to watch. You can choose one of:
 
         * `storage` – storage blocks like chests, barrels, shulker boxes
@@ -106,4 +106,3 @@ the configured title, description, color, and thumbnail.
 
 `config.yml` contains global settings such as the default embed color, webhook
 URL, and rate limits. The file includes comments for each option.
-
