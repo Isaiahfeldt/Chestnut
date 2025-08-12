@@ -23,7 +23,7 @@ debug: false
 # - Hex string: "#RRGGBB" (e.g., "#FFCC00")
 # - Hex with 0x prefix: "0xRRGGBB" (e.g., "0xFFCC00")
 # - Decimal integer: 16763904
-embedColor: "#FFCC00"
+embedColor: "#f8b866"
 
 # Footer text template for webhook embeds.
 # You can use placeholders: <name>, <trigger>, <world>, <x>, <y>, <z>
