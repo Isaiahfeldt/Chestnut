@@ -5,6 +5,9 @@ sends customizable webhook messages when something happens to them.
 <br>Use it to keep an eye on mailboxes, redstone torches, and more, with alerts that
 can be fully tailored to match your style and needs.
 
+> **Why "Chestnut"?**  
+> Well, it started as “Chest-Nut” — because, you know, it keeps an eye on chests.
+
 ## Features
 
 - Track supported blocks (storage containers, redstone torches, lecterns) by standing next to them and running a command.
