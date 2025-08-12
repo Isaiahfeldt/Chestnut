@@ -106,3 +106,17 @@ the configured title, description, color, and thumbnail.
 
 `config.yml` contains global settings such as the default embed color, webhook
 URL, and rate limits. The file includes comments for each option.
+
+## FAQ
+
+**Q: Can I use this plugin on a server that already has a Discord bot?**
+<br>Yes, absolutely. Chestnut works independently — it sends webhook messages directly to Discord (or any other webhook-compatible service). It doesn’t need to connect to or control an existing bot, so it won’t interfere with whatever your bot is doing.
+
+**Q: Does Chestnut only work with Discord?**
+<br>Yes. Right now Chestnut sends webhook messages in a format designed for Discord. This could possibly be extended to other services in the future.
+
+Q: Will it slow down my server if I track a lot of blocks?
+<br>Possibly. I haven’t stress-tested the limits yet, but like most plugins, tracking very large numbers of blocks could impact performance. It’s best to start small and scale up while monitoring your server’s TPS.
+
+Q: Can I send webhooks to multiple channels?
+<br>Not at this time. Chestnut supports a single webhook URL per server configuration. I would like to add support for multiple channels in the future.
