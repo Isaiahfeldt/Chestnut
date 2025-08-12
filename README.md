@@ -1,14 +1,15 @@
 # Chestnut
 
 Chestnut is a Minecraft plugin that watches specific blocks and
-sends Discord messages when something happens to them. Use it to keep an eye
-on mailboxes, doors, torches and more.
+sends customizable webhook messages when something happens to them.
+<br>Use it to keep an eye on mailboxes, redstone torches, and more, with alerts that
+can be fully tailored to match your style and needs.
 
 ## Features
 
 - Track supported blocks (storage containers, redstone torches, lecterns) by standing next to them and running a command.
 - Built‑in triggers such as `storage`, `redstone_torch` and `lectern`.
-- Custom message templates with placeholders like `<name>` or `<world>`.
+- Custom message templates with placeholders like `<name>`, `<world>`, `<time>`, or `<page>`.
 - Optional embed colors and thumbnail images for each event.
 - Discord webhooks sent asynchronously with rate limiting and retry.
 
@@ -17,7 +18,7 @@ Supported block types:
 - Redstone torches
 - Lecterns
 
-More block types may be added over time.
+More block types may be added over time or by request.
 
 ## Installation
 
@@ -27,13 +28,13 @@ More block types may be added over time.
 
 ## Commands
 
-| Command | Description |
-| --- | --- |
-| `/settracker <name> <trigger>` | Bind the block you're looking at to a tracker. |
-| `/edittracker <name> …` | Change messages, colors, thumbnails and more. |
-| `/trackerlist [page]` | Show all trackers with an interactive menu to quickly make simple changes to trackers (based on Husk Homes). |
-| `/deltracker <name\|all>` | Remove trackers. |
-| `/chestnut <help\|reload\|status>` | Administrative actions. |
+| Command                            | Description                                                                                                                           |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `/settracker <name> <trigger>`     | Start creating a tracker by naming it and choosing a trigger. You’ll have 60 seconds to right-click an appropriate block to bind it.  |
+| `/edittracker <name> …`            | Change messages, colors, thumbnails and more.                                                                                         |
+| `/trackerlist [page]`              | Show all trackers with an interactive menu to quickly make simple changes to trackers (based on Husk Homes).                          |
+| `/deltracker <name\|all>`          | Remove trackers.                                                                                                                      |
+| `/chestnut <help\|reload\|status>` | Administrative actions.                                                                                                               |
 
 ## Trigger Reference
 
@@ -52,29 +53,46 @@ All triggers support basic tags like `<name>`, `<trigger>`, `<event>`, `<world>`
 Imagine a chest at spawn where players drop off items. You want a Discord alert
 whenever it is opened.
 
-1. Stand in front of the chest and run:
+1. Stand by the chest and type:
+
    ```
-   /settracker mailbox storage
+   /settracker mailbox storage  
    ```
-2. Customize the messages sent to Discord:
+
+    * **mailbox** = the name you give this tracker (for your list and commands)
+    * **storage** = what to watch. You can choose one of:
+
+        * `storage` – storage blocks like chests, barrels, shulker boxes
+        * `redstone_torch` – a redstone torch turning on/off
+        * `lectern` – a lectern’s book actions and reading 
+    
+    After running the command, you’ll have **60 seconds** to right-click the chest to bind it to the tracker.
+
+
+2. Customize the messages sent via webhook:
+
    ```
-   /edittracker mailbox msg open "<user> checked the <name>!"
-   /edittracker mailbox msg close "<user> closed the <name>. Items: <items>"
+   /edittracker mailbox msg open "<user> checked the <name>!"  
+   /edittracker mailbox msg close "<user> closed the <name>. Items: <items>"  
    ```
+
 3. Add some color and icons:
+
    ```
-   /edittracker mailbox color open #00FF00
-   /edittracker mailbox color close #FF0000
-   /edittracker mailbox thumbnail open https://example.com/open.png
-   /edittracker mailbox thumbnail close https://example.com/close.png
+   /edittracker mailbox color open #00FF00  
+   /edittracker mailbox color close #FF0000  
+   /edittracker mailbox thumbnail open https://example.com/open.png  
+   /edittracker mailbox thumbnail close https://example.com/close.png  
    ```
+
 4. Try it out with a test event:
+
    ```
-   /edittracker mailbox test open
+   /edittracker mailbox test open  
    ```
 
 Now every time the chest is used, an embed will be posted to your webhook with
-the configured title, description, color and thumbnail.
+the configured title, description, color, and thumbnail.
 
 ## Permissions
 
@@ -84,5 +102,5 @@ the configured title, description, color and thumbnail.
 ## Configuration
 
 `config.yml` contains global settings such as the default embed color, webhook
-URL and rate limits. The file includes comments for each option.
+URL, and rate limits. The file includes comments for each option.
 
