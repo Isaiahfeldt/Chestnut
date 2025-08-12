@@ -96,7 +96,9 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
         val globalLimit = config.globalRateLimitPerMinute.coerceAtLeast(1)
         while (globalCount.get() >= globalLimit && running) {
             Thread.sleep(100)
-            if (System.currentTimeMillis() >= windowResetAt) break
+            if (System.currentTimeMillis() >= windowResetAt) {
+                break
+            }
         }
         // Per tracker
         if (tracker != null && tracker.options.ratelimitPerMinute > 0) {
@@ -105,7 +107,9 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
             val limit = tracker.options.ratelimitPerMinute
             while (counter.get() >= limit && running) {
                 Thread.sleep(100)
-                if (System.currentTimeMillis() >= windowResetAt) break
+                if (System.currentTimeMillis() >= windowResetAt) {
+                    break
+                }
             }
         }
     }
@@ -115,8 +119,11 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
         if (url.isBlank()) {
             if (!warnNoUrl) {
                 warnNoUrl = true
-                plugin.logger.warning("Chestnut webhookUrl is empty. Messages will be dropped.")
+                plugin.logger.warning(
+                    "Chestnut webhookUrl is empty. Messages will be dropped."
+                )
             }
+
             return
         }
         val body = buildEmbedBody(job)
@@ -128,21 +135,29 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
             .build()
         var attempt = 0
         var backoff = 500L
+
         while (attempt < 3) {
             attempt++
+
             try {
                 val resp = http.send(request, HttpResponse.BodyHandlers.ofString())
                 if (resp.statusCode() in 200..299) {
                     globalCount.incrementAndGet()
+
                     job.tracker?.let {
                         if (it.options.ratelimitPerMinute > 0) {
-                            perTrackerCounts.computeIfAbsent(it.name) { AtomicInteger(0) }.incrementAndGet()
+                            perTrackerCounts.computeIfAbsent(it.name) { AtomicInteger(0) }
+                                .incrementAndGet()
                         }
                     }
+
                     return
                 }
+
                 if (resp.statusCode() == 429) {
-                    val retryAfter = resp.headers().firstValue("Retry-After").orElse("1").toLongOrNull() ?: 1L
+                    val retryAfter =
+                        resp.headers().firstValue("Retry-After").orElse("1").toLongOrNull()
+                            ?: 1L
                     Thread.sleep(retryAfter * 1000)
                 } else {
                     Thread.sleep(backoff)
@@ -153,7 +168,10 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
                 backoff = (backoff * 2).coerceAtMost(5000)
             }
         }
-        if (config.debug) Bukkit.getLogger().warning("Failed to send webhook after retries")
+
+        if (config.debug) {
+            Bukkit.getLogger().warning("Failed to send webhook after retries")
+        }
     }
 
     private fun jsonString(s: String): String {
@@ -162,38 +180,64 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
             .replace("\"", "\\\"")
             .replace("\n", "\\n")
             .replace("\r", "\\r")
+
         return "\"$escaped\""
     }
 
     private fun buildEmbedBody(job: Job): String {
-        val title = job.tracker?.let { it.title?.takeIf { s -> s.isNotBlank() } ?: it.name } ?: "Chestnut"
+        val title =
+            job.tracker?.let { it.title?.takeIf { s -> s.isNotBlank() } ?: it.name } ?: "Chestnut"
         val description = job.content
         val eventKey = job.event?.lowercase()
         val color = job.tracker?.let { t ->
-            if (eventKey != null) t.embedColors[eventKey] ?: config.embedColor else config.embedColor
+            if (eventKey != null) {
+                t.embedColors[eventKey] ?: config.embedColor
+            } else {
+                config.embedColor
+            }
         } ?: config.embedColor
+
         val ts = java.time.Instant.now().toString()
         val footerText = job.tracker?.let { t ->
             var f = config.embedFooter
             if (f.isNotBlank()) {
                 f = f.replace("<name>", t.name)
-                    .replace("<trigger>", xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(t.trigger).id)
+                    .replace(
+                        "<trigger>",
+                        xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(t.trigger).id,
+                    )
                     .replace("<world>", t.world)
                     .replace("<x>", t.x.toString())
                     .replace("<y>", t.y.toString())
                     .replace("<z>", t.z.toString())
                     .replace("<time>", ts)
-                    .replace("<event>", (job.event ?: ""))
-                    .replace("<items>", (job.itemsSummary ?: ""))
+                    .replace("<event>", job.event ?: "")
+                    .replace("<items>", job.itemsSummary ?: "")
                 f
-            } else null
+            } else {
+                null
+            }
         }
-        val footerJson = if (!footerText.isNullOrBlank()) ",\"footer\":{\"text\":${jsonString(footerText)}}" else ""
+
+        val footerJson =
+            if (!footerText.isNullOrBlank()) {
+                ",\"footer\":{\"text\":${jsonString(footerText)}}"
+            } else {
+                ""
+            }
+
         val thumbUrl = job.tracker?.let { t ->
             if (eventKey != null) t.embedThumbnails[eventKey] else null
         }
-        val thumbJson = if (!thumbUrl.isNullOrBlank()) ",\"thumbnail\":{\"url\":" + jsonString(thumbUrl) + "}" else ""
-        val embed = "{" +
+        val thumbJson =
+            if (!thumbUrl.isNullOrBlank()) {
+                ",\"thumbnail\":{\"url\":" + jsonString(thumbUrl) + "}"
+            } else {
+                ""
+            }
+
+        val embed =
+            "{" +
                 "\"title\":" + jsonString(title) + "," +
                 "\"description\":" + jsonString(description) + "," +
                 "\"color\":" + color + "," +
@@ -201,6 +245,7 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
                 footerJson +
                 thumbJson +
             "}"
+
         return "{\"embeds\":[" + embed + "]}"
     }
 }

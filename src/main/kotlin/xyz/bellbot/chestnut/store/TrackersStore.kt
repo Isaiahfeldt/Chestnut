@@ -22,7 +22,15 @@ class TrackersStore(private val plugin: JavaPlugin) {
     fun get(name: String): Tracker? = trackersByName[name]
     fun exists(name: String): Boolean = trackersByName.containsKey(name)
 
-    private fun makeKey(world: String, x: Int, y: Int, z: Int, trigger: Trigger): String = "$world|$x|$y|$z|${'$'}{trigger.name}"
+    private fun makeKey(
+        world: String,
+        x: Int,
+        y: Int,
+        z: Int,
+        trigger: Trigger,
+    ): String {
+        return "$world|$x|$y|$z|${trigger.name}"
+    }
 
     private fun indexTracker(t: Tracker) {
         val key = makeKey(t.world, t.x, t.y, t.z, t.trigger)
@@ -39,8 +47,16 @@ class TrackersStore(private val plugin: JavaPlugin) {
         t.indexKey = null
     }
 
-    fun byLocationAndTrigger(world: String, x: Int, y: Int, z: Int, trigger: Trigger): List<Tracker> =
-        index[makeKey(world, x, y, z, trigger)]?.toList() ?: emptyList()
+    fun byLocationAndTrigger(
+        world: String,
+        x: Int,
+        y: Int,
+        z: Int,
+        trigger: Trigger,
+    ): List<Tracker> {
+        val key = makeKey(world, x, y, z, trigger)
+        return index[key]?.toList() ?: emptyList()
+    }
 
     fun putAndSave(tracker: Tracker) {
         trackersByName[tracker.name] = tracker

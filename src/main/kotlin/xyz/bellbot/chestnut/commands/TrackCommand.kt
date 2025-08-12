@@ -47,63 +47,159 @@ class TrackCommand(
 
         // New HuskHomes-style commands
         if (isCmd("settracker", "settrack")) {
-            if (sender !is Player) { sender.sendMessage("§cOnly players can bind trackers."); return true }
-            if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission."); return true }
-            if (args.size < 2) { sender.sendMessage("§eUsage: /settracker <name> <trigger>"); return true }
+            if (sender !is Player) {
+                sender.sendMessage("§cOnly players can bind trackers.")
+                return true
+            }
+
+            if (
+                !sender.hasPermission("chestnut.use") &&
+                    !sender.hasPermission("chestnut.admin")
+            ) {
+                sender.sendMessage("§cNo permission.")
+                return true
+            }
+
+            if (args.size < 2) {
+                sender.sendMessage("§eUsage: /settracker <name> <trigger>")
+                return true
+            }
+
             val name = args[0]
-            val trigger = TriggerRegistry.resolve(args.getOrNull(1) ?: "") ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"); return true }
-            if (!namePattern.matcher(name).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-            if (store.exists(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
+            val trigger =
+                TriggerRegistry.resolve(args.getOrNull(1) ?: "")
+                    ?: run {
+                        sender.sendMessage(
+                            "§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"
+                        )
+                        return true
+                    }
+
+            if (!namePattern.matcher(name).matches()) {
+                sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -")
+                return true
+            }
+
+            if (store.exists(name)) {
+                sender.sendMessage("§cTracker with that name already exists.")
+                return true
+            }
+
             bind.start(sender, name, trigger)
             return true
         }
+
         if (isCmd("deltracker", "delt")) {
-            if (args.isEmpty()) { sender.sendMessage("§eUsage: /deltracker <name|all> [--confirm]"); return true }
-            val confirm = args.any { it.equals("--confirm", true) || it.equals("confirm", true) || it.equals("-y", true) }
-            if (!confirm) { sender.sendMessage("§ePlease confirm with --confirm"); return true }
+            if (args.isEmpty()) {
+                sender.sendMessage("§eUsage: /deltracker <name|all> [--confirm]")
+                return true
+            }
+
+            val confirm =
+                args.any { it.equals("--confirm", true) || it.equals("confirm", true) || it.equals("-y", true) }
+            if (!confirm) {
+                sender.sendMessage("§ePlease confirm with --confirm")
+                return true
+            }
+
             val target = args[0]
             if (target.equals("all", true)) {
-                if (!sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission to delete all."); return true }
+                if (!sender.hasPermission("chestnut.admin")) {
+                    sender.sendMessage("§cNo permission to delete all.")
+                    return true
+                }
+
                 val names = store.all().map { it.name }.toList()
                 var count = 0
-                for (n in names) { store.removeAndSave(n); count++ }
+                for (n in names) {
+                    store.removeAndSave(n)
+                    count++
+                }
+
                 sender.sendMessage("§aDeleted $count trackers.")
                 return true
             }
+
             val t = store.get(target)
-            if (t == null) { sender.sendMessage("§aTracker removed (not found)."); return true }
-            if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+            if (t == null) {
+                sender.sendMessage("§aTracker removed (not found).")
+                return true
+            }
+
+            if (!canManage(sender, t)) {
+                sender.sendMessage("§cYou don't own this tracker.")
+                return true
+            }
+
             store.removeAndSave(t.name)
             sender.sendMessage("§aTracker '${t.name}' removed.")
             return true
         }
+
         if (isCmd("edittracker", "edittrack")) {
             if (args.size < 2) {
-                sender.sendMessage("§eUsage: /edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail> [args]")
+                sender.sendMessage(
+                    "§eUsage: /edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail> [args]"
+                )
                 return true
             }
+
             val name = args[0]
             val sub = args[1].lowercase(Locale.getDefault())
-            val tracker = store.get(name) ?: run { sender.sendMessage("§cTracker not found."); return true }
-            if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+            val tracker =
+                store.get(name)
+                    ?: run {
+                        sender.sendMessage("§cTracker not found.")
+                        return true
+                    }
+
+            if (!canManage(sender, tracker)) {
+                sender.sendMessage("§cYou don't own this tracker.")
+                return true
+            }
+
             when (sub) {
                 "rename" -> {
-                    if (args.size < 3) { sender.sendMessage("§eUsage: /edittracker $name rename <new_name>"); return true }
+                    if (args.size < 3) {
+                        sender.sendMessage("§eUsage: /edittracker $name rename <new_name>")
+                        return true
+                    }
+
                     val newName = args[2]
-                    if (!namePattern.matcher(newName).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-                    if (store.exists(newName)) { sender.sendMessage("§cName already in use."); return true }
+                    if (!namePattern.matcher(newName).matches()) {
+                        sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -")
+                        return true
+                    }
+
+                    if (store.exists(newName)) {
+                        sender.sendMessage("§cName already in use.")
+                        return true
+                    }
+
                     val ok = store.rename(tracker.name, newName)
-                    if (ok) sender.sendMessage("§aRenamed '${tracker.name}' to '$newName'.") else sender.sendMessage("§cRename failed.")
+                    if (ok) {
+                        sender.sendMessage("§aRenamed '${tracker.name}' to '$newName'.")
+                    } else {
+                        sender.sendMessage("§cRename failed.")
+                    }
                 }
                 "title" -> {
-                    if (args.size < 3) { sender.sendMessage("§eUsage: /edittracker $name title <title> (use \"\" to clear)"); return true }
+                    if (args.size < 3) {
+                        sender.sendMessage("§eUsage: /edittracker $name title <title> (use \"\" to clear)")
+                        return true
+                    }
+
                     val title = joinTail(args, 2)
                     tracker.title = if (title.isBlank()) null else title
                     store.putAndSave(tracker)
                     sender.sendMessage("§aTitle updated.")
                 }
                 "description" -> {
-                    if (args.size < 3) { sender.sendMessage("§eUsage: /edittracker $name description <text>"); return true }
+                    if (args.size < 3) {
+                        sender.sendMessage("§eUsage: /edittracker $name description <text>")
+                        return true
+                    }
+
                     val desc = joinTail(args, 2)
                     tracker.description = if (desc.isBlank()) null else desc
                     store.putAndSave(tracker)

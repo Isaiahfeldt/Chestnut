@@ -22,18 +22,28 @@ object TemplateRenderer {
     fun render(template: String?, tracker: Tracker, event: String, opts: RenderOptions): String {
         val base = template ?: defaultTemplate(tracker.trigger, event)
         val map = mutableMapOf<String, String>()
+
         map["name"] = tracker.title?.takeIf { it.isNotBlank() } ?: tracker.name
-        map["trigger"] = xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(tracker.trigger).id
+        map["trigger"] =
+            xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(tracker.trigger).id
         map["event"] = event
         map["world"] = tracker.world
         map["x"] = tracker.x.toString()
         map["y"] = tracker.y.toString()
         map["z"] = tracker.z.toString()
         map["time"] = LocalDateTime.now().format(isoFormatter)
+
         map["state"] = opts.state ?: ""
         map["user"] = opts.user ?: ""
         map["uuid"] = opts.uuid ?: ""
-        map["items"] = if (opts.includeItems && opts.inventory != null) summarizeInventory(opts.inventory) else ""
+
+        map["items"] =
+            if (opts.includeItems && opts.inventory != null) {
+                summarizeInventory(opts.inventory)
+            } else {
+                ""
+            }
+
         map["page"] = opts.page?.toString() ?: ""
         map["book_title"] = opts.bookTitle ?: ""
         map["book_author"] = opts.bookAuthor ?: ""
@@ -53,15 +63,26 @@ object TemplateRenderer {
 
     private fun summarizeInventory(inv: Inventory): String {
         val counts = LinkedHashMap<String, Int>()
+
         for (i in 0 until inv.size) {
             val item: ItemStack = inv.getItem(i) ?: continue
-            if (item.type.isAir) continue
+            if (item.type.isAir) {
+                continue
+            }
+
             val key = item.type.key.key.replace('_', ' ').lowercase()
             counts[key] = (counts[key] ?: 0) + item.amount
         }
-        if (counts.isEmpty()) return "(empty)"
-        val parts = counts.entries.take(5).map { (name, c) -> "$c x $name" }
+
+        if (counts.isEmpty()) {
+            return "(empty)"
+        }
+
+        val parts = counts.entries
+            .take(5)
+            .map { (name, c) -> "$c x $name" }
         val suffix = if (counts.size > 5) "…" else ""
+
         return parts.joinToString(", ") + suffix
     }
 

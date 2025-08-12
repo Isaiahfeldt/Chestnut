@@ -48,9 +48,18 @@ class Chestnut : JavaPlugin() {
         getCommand("chestnut")?.tabCompleter = track
 
         // Autosave every 30s async
-        autosaveTaskId = server.scheduler.runTaskTimerAsynchronously(this, Runnable {
-            try { store.save() } catch (e: Exception) { logger.warning("Autosave failed: ${e.message}") }
-        }, 20L * 30, 20L * 30).taskId
+        autosaveTaskId = server.scheduler.runTaskTimerAsynchronously(
+            this,
+            Runnable {
+                try {
+                    store.save()
+                } catch (e: Exception) {
+                    logger.warning("Autosave failed: ${e.message}")
+                }
+            },
+            20L * 30,
+            20L * 30
+        ).taskId
 
         if (configManager.webhookUrl.isBlank()) {
             logger.warning("No webhookUrl configured. Set 'webhookUrl' in config.yml to enable Discord notifications.")
@@ -60,9 +69,22 @@ class Chestnut : JavaPlugin() {
     }
 
     override fun onDisable() {
-        try { store.save() } catch (_: Exception) {}
-        try { webhook.stopAndDrain(2500) } catch (_: Exception) {}
-        if (autosaveTaskId != -1) server.scheduler.cancelTask(autosaveTaskId)
+        try {
+            store.save()
+        } catch (_: Exception) {
+            // ignored on shutdown
+        }
+
+        try {
+            webhook.stopAndDrain(2500)
+        } catch (_: Exception) {
+            // ignored on shutdown
+        }
+
+        if (autosaveTaskId != -1) {
+            server.scheduler.cancelTask(autosaveTaskId)
+        }
+
         logger.info("Chestnut disabled.")
     }
 }

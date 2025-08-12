@@ -6,6 +6,10 @@ enum class Trigger(val events: List<String>) {
     LECTERN(listOf("insert_book", "remove_book", "page_change", "open"));
 
     companion object {
-        fun fromString(s: String): Trigger? = entries.firstOrNull { it.name.equals(s.trim(), ignoreCase = true) }
+        fun fromString(s: String): Trigger? {
+            return entries.firstOrNull { entry ->
+                entry.name.equals(s.trim(), ignoreCase = true)
+            }
+        }
     }
 }
