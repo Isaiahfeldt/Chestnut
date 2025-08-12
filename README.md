@@ -110,7 +110,7 @@ URL, and rate limits. The file includes comments for each option.
 ## FAQ
 
 **Q: Can I use this plugin on a server that already has a Discord bot?**
-<br>Yes, absolutely. Chestnut works independently — it sends webhook messages directly to Discord (or any other webhook-compatible service). It doesn’t need to connect to or control an existing bot, so it won’t interfere with whatever your bot is doing.
+<br>Yes, absolutely. Chestnut works independently — it sends webhook messages directly to Discord. It doesn’t need to connect to or control an existing bot, so it won’t interfere with whatever your bot is doing.
 
 **Q: Does Chestnut only work with Discord?**
 <br>Yes. Right now Chestnut sends webhook messages in a format designed for Discord. This could possibly be extended to other services in the future.
