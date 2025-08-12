@@ -11,6 +11,7 @@ import xyz.bellbot.chestnut.model.Tracker
 import xyz.bellbot.chestnut.model.TrackerOptions
 import xyz.bellbot.chestnut.model.Trigger
 import xyz.bellbot.chestnut.store.TrackersStore
+import xyz.bellbot.chestnut.triggers.TriggerRegistry
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -91,22 +92,7 @@ class BindManager(
             return
         }
 
-        val templates = when (s.trigger) {
-            Trigger.INVENTORY_OPEN -> mutableMapOf(
-                "open" to "<user> opened <name> at <x>,<y>,<z>.",
-                "close" to "<user> closed <name> at <x>,<y>,<z>."
-            )
-            Trigger.TORCH_TOGGLE -> mutableMapOf(
-                "on" to "<name> has been lit!",
-                "off" to "<name> has turned off."
-            )
-            Trigger.LECTERN -> mutableMapOf(
-                "insert_book" to "<user> placed '<book_title>' on <name>.",
-                "remove_book" to "<user> removed '<book_title>' from <name>.",
-                "page_change" to "<user> turned to page <page> of '<book_title>' on <name>.",
-                "open" to "<user> opened '<book_title>' on <name>."
-            )
-        }
+        val templates = TriggerRegistry.descriptor(s.trigger).defaultTemplates.toMutableMap()
         val options = TrackerOptions(
             enabled = true,
             debounceTicks = config.defaultDebounceTicks,

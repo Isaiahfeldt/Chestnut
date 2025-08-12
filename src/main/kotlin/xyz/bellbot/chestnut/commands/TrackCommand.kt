@@ -18,6 +18,7 @@ import xyz.bellbot.chestnut.model.Tracker
 import xyz.bellbot.chestnut.model.Trigger
 import xyz.bellbot.chestnut.store.TrackersStore
 import xyz.bellbot.chestnut.util.TemplateRenderer
+import xyz.bellbot.chestnut.triggers.TriggerRegistry
 import xyz.bellbot.chestnut.webhook.WebhookSender
 import java.util.*
 import java.util.regex.Pattern
@@ -35,11 +36,7 @@ class TrackCommand(
         "<name>", "<trigger>", "<event>", "<world>", "<x>", "<y>", "<z>", "<time>"
     )
     private fun availablePlaceholders(trigger: Trigger): List<String> {
-        val extras = when (trigger) {
-            Trigger.INVENTORY_OPEN -> listOf("<user>", "<uuid>", "<items>")
-            Trigger.TORCH_TOGGLE -> listOf("<state>")
-            Trigger.LECTERN -> listOf("<user>", "<uuid>", "<page>", "<book_title>", "<book_author>", "<book_pages>", "<has_book>")
-        }
+        val extras = TriggerRegistry.descriptor(trigger).extraPlaceholders
         return corePlaceholders + extras
     }
 
@@ -54,7 +51,7 @@ class TrackCommand(
             if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission."); return true }
             if (args.size < 2) { sender.sendMessage("§eUsage: /settracker <name> <trigger>"); return true }
             val name = args[0]
-            val trigger = Trigger.fromString(args.getOrNull(1) ?: "") ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${Trigger.entries.joinToString(", ") { it.name }}"); return true }
+            val trigger = TriggerRegistry.resolve(args.getOrNull(1) ?: "") ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"); return true }
             if (!namePattern.matcher(name).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
             if (store.exists(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
             bind.start(sender, name, trigger)
@@ -268,7 +265,7 @@ class TrackCommand(
                 var i = from + 1
                 all.subList(from, to).forEach { t ->
                     val status = if (t.options.enabled) "enabled" else "disabled"
-                    sender.sendMessage("§7${i++}) §b${t.name} §7 ${t.trigger} §8${t.world} ${t.x} ${t.y} ${t.z} §7[${status}]")
+                    sender.sendMessage("§7${i++}) §b${t.name} §7 ${TriggerRegistry.descriptor(t.trigger).id} §8${t.world} ${t.x} ${t.y} ${t.z} §7[${status}]")
                 }
                 sender.sendMessage("§bPage ${reqPage}/${maxPage}")
             }
@@ -309,7 +306,7 @@ class TrackCommand(
                 if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission."); return true }
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track add <name> <trigger>"); return true }
                 val name = args[1]
-                val trigger = Trigger.fromString(args[2]) ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${Trigger.entries.joinToString(", ") { it.name }}"); return true }
+                val trigger = TriggerRegistry.resolve(args[2]) ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"); return true }
                 if (!namePattern.matcher(name).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
                 if (store.exists(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
                 bind.start(sender, name, trigger)
@@ -536,48 +533,14 @@ class TrackCommand(
     }
 
     private fun buildExamples(trigger: Trigger, event: String): List<String> {
-        return when (trigger) {
-            Trigger.INVENTORY_OPEN -> {
-                if (event.equals("open", true)) listOf(
-                    "<user> opened <name> at <x>,<y>,<z>.",
-                    "<user> opened <name> — <items>"
-                ) else listOf(
-                    "<user> closed <name> at <x>,<y>,<z>.",
-                    "<name> closed by <user> at <time>"
-                )
-            }
-            Trigger.TORCH_TOGGLE -> listOf(
-                "<name> has been <state>.",
-                "<name> <event> at <time>"
-            )
-            Trigger.LECTERN -> when (event.lowercase()) {
-                "insert_book" -> listOf(
-                    "<user> placed '<book_title>' on <name>.",
-                    "<user> set a book by <book_author> on <name>."
-                )
-                "remove_book" -> listOf(
-                    "<user> removed '<book_title>' from <name>.",
-                    "Book removed from <name> at <time>."
-                )
-                "open" -> listOf(
-                    "<user> opened '<book_title>' on <name>.",
-                    "<user> started reading '<book_title>' at <time>."
-                )
-                else -> listOf(
-                    "<user> turned to page <page> of '<book_title>' on <name>.",
-                    "<user> is reading '<book_title>' (<book_pages> pages) at <name>."
-                )
-            }
-        }
+        val d = TriggerRegistry.descriptor(trigger)
+        val key = event.lowercase()
+        return d.examples[key] ?: listOf("<name> event: <event>")
     }
 
     private fun displayTitle(t: Tracker): String = t.title?.takeIf { it.isNotBlank() } ?: t.name
 
-    private fun triggerLabel(t: Tracker): String = when (t.trigger) {
-        Trigger.INVENTORY_OPEN -> "⚙ Inventory Open"
-        Trigger.TORCH_TOGGLE -> "🔦 Torch Toggle"
-        Trigger.LECTERN -> "📖 Lectern"
-    }
+    private fun triggerLabel(t: Tracker): String = xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(t.trigger).displayName
 
     private fun stateText(t: Tracker): Pair<String, NamedTextColor> = when (t.trigger) {
         Trigger.TORCH_TOGGLE -> when (t.lastTorchLit) {
@@ -662,7 +625,7 @@ class TrackCommand(
             .append(Component.text(ownerName, TextColor.fromHexString("#a6a6a6")))
             .append(Component.text("  ", TextColor.fromHexString("#a6a6a6")))
             .append(Component.text("⚙ ", TextColor.fromHexString("#a6a6a6")))
-            .append(Component.text(t.trigger.name.lowercase(), TextColor.fromHexString("#a6a6a6")))
+            .append(Component.text(TriggerRegistry.descriptor(t.trigger).id, TextColor.fromHexString("#a6a6a6")))
             .append(Component.text("  ", TextColor.fromHexString("#a6a6a6")))
             .append(
                 Component.text(
@@ -727,7 +690,7 @@ class TrackCommand(
         sender.sendMessage("§fViewing details for tracker: §b$title")
         if (title != t.name) sender.sendMessage("§7Internal name: §f${t.name}")
         sender.sendMessage("§7Owner: §f${t.owner}")
-        sender.sendMessage("§7Trigger: §e${t.trigger}")
+        sender.sendMessage("§7Trigger: §e${TriggerRegistry.descriptor(t.trigger).id}")
         sender.sendMessage("§7Block: §f${t.blockType ?: "Block"}")
         sender.sendMessage("§6📍 ${t.world}, ${t.x}, ${t.y}, ${t.z}")
     }
@@ -740,7 +703,7 @@ class TrackCommand(
         sender.sendMessage("§e/edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail> §7- Edit hub")
         sender.sendMessage("§7Examples: §f/edittracker mailbox rename mailbox_v2 §7· §f/edittracker mailbox msg open \"<name> opened\"")
         if (sender.hasPermission("chestnut.admin")) sender.sendMessage("§e/chestnut <help|reload|status> §7- Admin tools")
-        sender.sendMessage("§7Inventory events: open, close · Torch events: on, off · Lectern events: insert_book, remove_book, page_change, open")
+        sender.sendMessage("§7Storage events: open, close · Redstone Torch events: on, off · Lectern events: insert_book, remove_book, page_change, open")
         sender.sendMessage("§7Placeholders: <name> <trigger> <event> <world> <x> <y> <z> <time> <state> <user> <uuid> <items> <page> <book_title> <book_author> <book_pages> <has_book>")
     }
 
@@ -753,8 +716,12 @@ class TrackCommand(
         // New commands completions
         if (isCmd("settracker", "settrack")) {
             return when (args.size) {
-                0, 1 -> mutableListOf() // name free-form
-                2 -> filter(Trigger.entries.map { it.name }, args[1])
+                0 -> mutableListOf("<name>") // show tip for first argument
+                1 -> if (args[0].isBlank()) mutableListOf("<name>") else mutableListOf() // name is free-form
+                2 -> {
+                    val inputs = TriggerRegistry.allTriggerInputs()
+                    if (args[1].isBlank()) (mutableListOf("<trigger>") + inputs).toMutableList() else filter(inputs, args[1])
+                }
                 else -> mutableListOf()
             }
         }
@@ -824,7 +791,7 @@ class TrackCommand(
             "add" -> {
                 return when (args.size) {
                     2 -> mutableListOf() // free-form name
-                    3 -> filter(Trigger.entries.map { it.name }, args[2])
+                    3 -> filter(TriggerRegistry.allTriggerInputs(), args[2])
                     else -> mutableListOf()
                 }
             }

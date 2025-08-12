@@ -173,7 +173,7 @@ class WebhookSender(private val plugin: JavaPlugin, private val config: Chestnut
             var f = config.embedFooter
             if (f.isNotBlank()) {
                 f = f.replace("<name>", t.name)
-                    .replace("<trigger>", t.trigger.name)
+                    .replace("<trigger>", xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(t.trigger).id)
                     .replace("<world>", t.world)
                     .replace("<x>", t.x.toString())
                     .replace("<y>", t.y.toString())

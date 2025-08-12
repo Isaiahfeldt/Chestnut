@@ -28,28 +28,26 @@ class InventoryOpenListener(
         val z = loc.blockZ
         val player = e.player
 
-        for (t in store.all()) {
-            if (t.trigger != Trigger.INVENTORY_OPEN) continue
+        val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.INVENTORY_OPEN)
+        for (t in matches) {
             if (!t.options.enabled) continue
-            if (t.world == world && t.x == x && t.y == y && t.z == z) {
-                val now = System.currentTimeMillis()
-                val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
-                if (now - t.lastEventAtTick < debounceMs) continue
-                t.lastEventAtTick = now
-                val rendered = TemplateRenderer.render(
-                    t.templates["open"],
-                    t,
-                    "open",
-                    TemplateRenderer.RenderOptions(
-                        user = player.name,
-                        uuid = player.uniqueId.toString(),
-                        includeItems = t.options.includeItems,
-                        inventory = e.inventory,
-                        testPrefix = null
-                    )
+            val now = System.currentTimeMillis()
+            val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
+            if (now - t.lastEventAtTick < debounceMs) continue
+            t.lastEventAtTick = now
+            val rendered = TemplateRenderer.render(
+                t.templates["open"],
+                t,
+                "open",
+                TemplateRenderer.RenderOptions(
+                    user = player.name,
+                    uuid = player.uniqueId.toString(),
+                    includeItems = t.options.includeItems,
+                    inventory = e.inventory,
+                    testPrefix = null
                 )
-                webhook.enqueue(t, rendered, "open")
-            }
+            )
+            webhook.enqueue(t, rendered, "open")
         }
     }
 
@@ -62,28 +60,26 @@ class InventoryOpenListener(
         val z = loc.blockZ
         val player = e.player
 
-        for (t in store.all()) {
-            if (t.trigger != Trigger.INVENTORY_OPEN) continue
+        val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.INVENTORY_OPEN)
+        for (t in matches) {
             if (!t.options.enabled) continue
-            if (t.world == world && t.x == x && t.y == y && t.z == z) {
-                val now = System.currentTimeMillis()
-                val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
-                if (now - t.lastEventAtTick < debounceMs) continue
-                t.lastEventAtTick = now
-                val rendered = TemplateRenderer.render(
-                    t.templates["close"],
-                    t,
-                    "close",
-                    TemplateRenderer.RenderOptions(
-                        user = player.name,
-                        uuid = player.uniqueId.toString(),
-                        includeItems = t.options.includeItems,
-                        inventory = e.inventory,
-                        testPrefix = null
-                    )
+            val now = System.currentTimeMillis()
+            val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
+            if (now - t.lastEventAtTick < debounceMs) continue
+            t.lastEventAtTick = now
+            val rendered = TemplateRenderer.render(
+                t.templates["close"],
+                t,
+                "close",
+                TemplateRenderer.RenderOptions(
+                    user = player.name,
+                    uuid = player.uniqueId.toString(),
+                    includeItems = t.options.includeItems,
+                    inventory = e.inventory,
+                    testPrefix = null
                 )
-                webhook.enqueue(t, rendered, "close")
-            }
+            )
+            webhook.enqueue(t, rendered, "close")
         }
     }
 }

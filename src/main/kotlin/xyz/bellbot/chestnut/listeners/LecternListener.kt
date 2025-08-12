@@ -29,22 +29,20 @@ class LecternListener(
         eventName: String,
         optsBuilder: (TemplateRenderer.RenderOptions) -> TemplateRenderer.RenderOptions
     ) {
-        for (t in store.all()) {
-            if (t.trigger != Trigger.LECTERN) continue
+        val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.LECTERN)
+        for (t in matches) {
             if (!t.options.enabled) continue
-            if (t.world == world && t.x == x && t.y == y && t.z == z) {
-                val now = System.currentTimeMillis()
-                val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
-                if (now - t.lastEventAtTick < debounceMs) continue
-                t.lastEventAtTick = now
-                val rendered = TemplateRenderer.render(
-                    t.templates[eventName],
-                    t,
-                    eventName,
-                    optsBuilder(TemplateRenderer.RenderOptions(testPrefix = null))
-                )
-                webhook.enqueue(t, rendered, eventName)
-            }
+            val now = System.currentTimeMillis()
+            val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
+            if (now - t.lastEventAtTick < debounceMs) continue
+            t.lastEventAtTick = now
+            val rendered = TemplateRenderer.render(
+                t.templates[eventName],
+                t,
+                eventName,
+                optsBuilder(TemplateRenderer.RenderOptions(testPrefix = null))
+            )
+            webhook.enqueue(t, rendered, eventName)
         }
     }
 

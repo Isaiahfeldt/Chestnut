@@ -34,31 +34,29 @@ class TorchToggleListener(
         plugin.server.scheduler.runTask(plugin, Runnable {
             val data = b.blockData as? Lightable ?: return@Runnable
             val lit = data.isLit
-            for (t in store.all()) {
-                if (t.trigger != Trigger.TORCH_TOGGLE) continue
+            val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.TORCH_TOGGLE)
+            for (t in matches) {
                 if (!t.options.enabled) continue
-                if (t.world == world && t.x == x && t.y == y && t.z == z) {
-                    val last = t.lastTorchLit
-                    if (last != null && last == lit) continue
-                    t.lastTorchLit = lit
+                val last = t.lastTorchLit
+                if (last != null && last == lit) continue
+                t.lastTorchLit = lit
 
-                    val now = System.currentTimeMillis()
-                    val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
-                    if (now - t.lastEventAtTick < debounceMs) return@Runnable
-                    t.lastEventAtTick = now
+                val now = System.currentTimeMillis()
+                val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
+                if (now - t.lastEventAtTick < debounceMs) return@Runnable
+                t.lastEventAtTick = now
 
-                    val eventName = if (lit) "on" else "off"
-                    val rendered = TemplateRenderer.render(
-                        t.templates[eventName],
-                        t,
-                        eventName,
-                        TemplateRenderer.RenderOptions(
-                            state = if (lit) "lit" else "unlit",
-                            testPrefix = null
-                        )
+                val eventName = if (lit) "on" else "off"
+                val rendered = TemplateRenderer.render(
+                    t.templates[eventName],
+                    t,
+                    eventName,
+                    TemplateRenderer.RenderOptions(
+                        state = if (lit) "lit" else "unlit",
+                        testPrefix = null
                     )
-                    webhook.enqueue(t, rendered, eventName)
-                }
+                )
+                webhook.enqueue(t, rendered, eventName)
             }
         })
     }
