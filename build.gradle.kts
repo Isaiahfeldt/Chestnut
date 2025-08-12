@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "xyz.bellbot"
-version = "1.0-SNAPSHOT"
+version = "1.0"
 
 repositories {
     mavenCentral()
@@ -20,11 +20,30 @@ dependencies {
 }
 
 tasks {
+    // Produce only the shaded jar, with no "-all" suffix
+    shadowJar {
+        archiveClassifier.set("")   // <- removes "-all"
+        // Optional hardening:
+        // minimize()
+        // relocate("kotlin", "xyz.bellbot.chestnut.libs.kotlin")
+    }
+
+    // Don’t build the plain/thin jar
+    named<Jar>("jar") { enabled = false }
+
+    // Ensure `build` runs the shaded jar
+    build { dependsOn(shadowJar) }
+
+    processResources {
+        val props = mapOf("version" to version)
+        inputs.properties(props)
+        filteringCharset = "UTF-8"
+        filesMatching("plugin.yml") { expand(props) }
+        exclude("paper-plugin.yml")
+    }
+
     runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion("1.21")
+        minecraftVersion("1.21") // run-paper will pick shadowJar automatically if present
     }
 }
 
