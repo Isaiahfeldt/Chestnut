@@ -120,3 +120,6 @@ URL, and rate limits. The file includes comments for each option.
 
 **Q: Can I send webhooks to multiple channels?**
 <br>Not at this time. Chestnut supports a single webhook URL per server configuration. I would like to add support for multiple channels in the future.
+
+**Q: Why don’t my alerts look like the example screenshots?**
+Out of the box, Chestnut uses simple default messages without custom colors or thumbnails. The examples in the screenshots use customized settings configured with /edittracker commands.
