@@ -1,7 +1,7 @@
 # Chestnut
 
 Chestnut is a Minecraft plugin that watches specific blocks and
-sends customizable webhook messages when something happens to them.
+sends customizable Discord webhook messages when something happens to them.
 <br>Use it to keep an eye on mailboxes, redstone torches, and more, with alerts that
 can be fully tailored to match your style and needs.
 
