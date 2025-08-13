@@ -23,6 +23,16 @@ import xyz.bellbot.chestnut.webhook.WebhookSender
 import java.util.*
 import java.util.regex.Pattern
 
+/**
+ * Command handler and tab completer for Chestnut.
+ *
+ * Provides a modern command suite:
+ * - /settracker, /deltracker, /edittracker, /trackerlist, /chestnut,
+ * and a legacy-compatible /track interface for migration.
+ *
+ * The implementation favors guard clauses and small, readable blocks.
+ * Behavior is unchanged from the previous version; this is a readability refactor only.
+ */
 class TrackCommand(
     private val plugin: JavaPlugin,
     private val config: ChestnutConfig,
@@ -35,11 +45,28 @@ class TrackCommand(
     private val corePlaceholders = listOf(
         "<name>", "<trigger>", "<event>", "<world>", "<x>", "<y>", "<z>", "<time>"
     )
+    /**
+     * Returns the list of supported template placeholders for a trigger,
+     * composed of core placeholders plus trigger-specific extras.
+     */
     private fun availablePlaceholders(trigger: Trigger): List<String> {
         val extras = TriggerRegistry.descriptor(trigger).extraPlaceholders
         return corePlaceholders + extras
     }
 
+    /**
+     * Handles all Chestnut commands.
+     *
+     * Modern commands:
+     * - /settracker <name> <trigger>
+     * - /deltracker <name|all> [--confirm]
+     * - /edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail>
+     * - /trackerlist [page]
+     * - /chestnut <help|reload|status>
+     *
+     * Also supports the legacy /track interface for migration. The method uses guard
+     * clauses for permissions/arguments and delegates discrete tasks to helpers.
+     */
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         val cmd = command.name.lowercase(Locale.getDefault())
         val used = label.lowercase(Locale.getDefault())
@@ -47,34 +74,78 @@ class TrackCommand(
 
         // New HuskHomes-style commands
         if (isCmd("settracker", "settrack")) {
-            if (sender !is Player) { sender.sendMessage("§cOnly players can bind trackers."); return true }
-            if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission."); return true }
-            if (args.size < 2) { sender.sendMessage("§eUsage: /settracker <name> <trigger>"); return true }
+            if (sender !is Player) {
+                sender.sendMessage("§cOnly players can bind trackers.")
+                return true
+            }
+
+            if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) {
+                sender.sendMessage("§cNo permission.")
+                return true
+            }
+
+            if (args.size < 2) {
+                sender.sendMessage("§eUsage: /settracker <name> <trigger>")
+                return true
+            }
             val name = args[0]
-            val trigger = TriggerRegistry.resolve(args.getOrNull(1) ?: "") ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"); return true }
-            if (!namePattern.matcher(name).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-            if (store.exists(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
+
+            val trigger = TriggerRegistry.resolve(args.getOrNull(1) ?: "") ?: run {
+                sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}")
+                return true
+            }
+
+            if (!namePattern.matcher(name).matches()) {
+                sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -")
+                return true
+            }
+
+            if (store.exists(name)) {
+                sender.sendMessage("§cTracker with that name already exists.")
+                return true
+            }
             bind.start(sender, name, trigger)
             return true
         }
         if (isCmd("deltracker", "delt")) {
-            if (args.isEmpty()) { sender.sendMessage("§eUsage: /deltracker <name|all> [--confirm]"); return true }
+            if (args.isEmpty()) {
+                sender.sendMessage("§eUsage: /deltracker <name|all> [--confirm]")
+                return true
+            }
+
             val confirm = args.any { it.equals("--confirm", true) || it.equals("confirm", true) || it.equals("-y", true) }
-            if (!confirm) { sender.sendMessage("§ePlease confirm with --confirm"); return true }
+            if (!confirm) {
+                sender.sendMessage("§ePlease confirm with --confirm")
+                return true
+            }
+
             val target = args[0]
             if (target.equals("all", true)) {
-                if (!sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission to delete all."); return true }
+                if (!sender.hasPermission("chestnut.admin")) {
+                    sender.sendMessage("§cNo permission to delete all.")
+                    return true
+                }
                 val names = store.all().map { it.name }.toList()
                 var count = 0
-                for (n in names) { store.removeAndSave(n); count++ }
+                for (n in names) {
+                    store.removeAndSave(n)
+                    count++
+                }
                 sender.sendMessage("§aDeleted $count trackers.")
                 return true
             }
-            val t = store.get(target)
-            if (t == null) { sender.sendMessage("§aTracker removed (not found)."); return true }
-            if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
-            store.removeAndSave(t.name)
-            sender.sendMessage("§aTracker '${t.name}' removed.")
+
+            val tracker = store.get(target)
+            if (tracker == null) {
+                sender.sendMessage("§aTracker removed (not found).")
+                return true
+            }
+            if (!canManage(sender, tracker)) {
+                sender.sendMessage("§cYou don't own this tracker.")
+                return true
+            }
+            store.removeAndSave(tracker.name)
+            sender.sendMessage("§aTracker '${tracker.name}' removed.")
             return true
         }
         if (isCmd("edittracker", "edittrack")) {
@@ -84,36 +155,66 @@ class TrackCommand(
             }
             val name = args[0]
             val sub = args[1].lowercase(Locale.getDefault())
-            val tracker = store.get(name) ?: run { sender.sendMessage("§cTracker not found."); return true }
-            if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+            val tracker = store.get(name) ?: run {
+                sender.sendMessage("§cTracker not found.")
+                return true
+            }
+            if (!canManage(sender, tracker)) {
+                sender.sendMessage("§cYou don't own this tracker.")
+                return true
+            }
             when (sub) {
                 "rename" -> {
-                    if (args.size < 3) { sender.sendMessage("§eUsage: /edittracker $name rename <new_name>"); return true }
+                    if (args.size < 3) {
+                        sender.sendMessage("§eUsage: /edittracker $name rename <new_name>")
+                        return true
+                    }
                     val newName = args[2]
-                    if (!namePattern.matcher(newName).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-                    if (store.exists(newName)) { sender.sendMessage("§cName already in use."); return true }
+                    if (!namePattern.matcher(newName).matches()) {
+                        sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -")
+                        return true
+                    }
+                    if (store.exists(newName)) {
+                        sender.sendMessage("§cName already in use.")
+                        return true
+                    }
                     val ok = store.rename(tracker.name, newName)
                     if (ok) sender.sendMessage("§aRenamed '${tracker.name}' to '$newName'.") else sender.sendMessage("§cRename failed.")
                 }
                 "title" -> {
-                    if (args.size < 3) { sender.sendMessage("§eUsage: /edittracker $name title <title> (use \"\" to clear)"); return true }
+                    if (args.size < 3) {
+                        sender.sendMessage("§eUsage: /edittracker $name title <title> (use \"\" to clear)")
+                        return true
+                    }
                     val title = joinTail(args, 2)
                     tracker.title = if (title.isBlank()) null else title
                     store.putAndSave(tracker)
                     sender.sendMessage("§aTitle updated.")
                 }
                 "description" -> {
-                    if (args.size < 3) { sender.sendMessage("§eUsage: /edittracker $name description <text>"); return true }
+                    if (args.size < 3) {
+                        sender.sendMessage("§eUsage: /edittracker $name description <text>")
+                        return true
+                    }
                     val desc = joinTail(args, 2)
                     tracker.description = if (desc.isBlank()) null else desc
                     store.putAndSave(tracker)
                     sender.sendMessage("§aDescription updated.")
                 }
                 "msg" -> {
-                    if (args.size < 3) { sender.sendMessage("§eUsage: /edittracker $name msg <event> <template>"); return true }
+                    if (args.size < 3) {
+                        sender.sendMessage("§eUsage: /edittracker $name msg <event> <template>")
+                        return true
+                    }
                     val event = args[2].lowercase()
-                    if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) { sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}"); return true }
-                    if (args.size == 3) { sendPlaceholderHelper(sender, tracker, event); return true }
+                    if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) {
+                        sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}")
+                        return true
+                    }
+                    if (args.size == 3) {
+                        sendPlaceholderHelper(sender, tracker, event)
+                        return true
+                    }
                     val template = joinTail(args, 3)
                     tracker.templates[event] = template
                     store.putAndSave(tracker)
@@ -134,7 +235,10 @@ class TrackCommand(
                     sender.sendMessage("§7Preview: §f$preview")
                 }
                 "rebind" -> {
-                    if (sender !is Player) { sender.sendMessage("§cOnly players can rebind trackers."); return true }
+                    if (sender !is Player) {
+                        sender.sendMessage("§cOnly players can rebind trackers.")
+                        return true
+                    }
                     bind.startRebind(sender, tracker.name)
                 }
                 "enable" -> {
@@ -148,9 +252,15 @@ class TrackCommand(
                     sender.sendMessage("§eTracker disabled.")
                 }
                 "tp" -> {
-                    if (sender !is Player) { sender.sendMessage("§cOnly players can teleport."); return true }
+                    if (sender !is Player) {
+                        sender.sendMessage("§cOnly players can teleport.")
+                        return true
+                    }
                     val world = plugin.server.getWorld(tracker.world)
-                    if (world == null) { sender.sendMessage("§cWorld '${tracker.world}' is not loaded."); return true }
+                    if (world == null) {
+                        sender.sendMessage("§cWorld '${tracker.world}' is not loaded.")
+                        return true
+                    }
                     val loc = org.bukkit.Location(world, tracker.x + 0.5, tracker.y + 1.0, tracker.z + 0.5)
                     sender.teleport(loc)
                     sender.sendMessage("§aTeleported to '${tracker.name}'.")
@@ -159,7 +269,10 @@ class TrackCommand(
                     if (sender is Player) sendInfoPanel(sender, tracker) else sendInfoConsole(sender, tracker)
                 }
                 "test" -> {
-                    if (!config.enableTestCommand) { sender.sendMessage("§cTest command is disabled."); return true }
+                    if (!config.enableTestCommand) {
+                        sender.sendMessage("§cTest command is disabled.")
+                        return true
+                    }
                     val event = if (args.size >= 3) args[2].lowercase(Locale.getDefault()) else tracker.trigger.events.first().lowercase(Locale.getDefault())
                     val template = tracker.templates[event]
                     val player = sender as? Player
@@ -319,7 +432,7 @@ class TrackCommand(
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val event = args[2].lowercase()
                 if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) { sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}"); return true }
-                // If no template provided, show helper with placeholders and examples
+                // If no template provided, show a helper with placeholders and examples
                 if (args.size == 3) {
                     sendPlaceholderHelper(sender, tracker, event)
                     return true
@@ -347,13 +460,18 @@ class TrackCommand(
             }
             "list" -> {
                 val all = store.all().sortedBy { it.name.lowercase() }
-                if (all.isEmpty()) { sender.sendMessage("§7No trackers."); return true }
+                if (all.isEmpty()) {
+                    sender.sendMessage("§7No trackers.")
+                    return true
+                }
+
                 val pageSize = 5
                 val total = all.size
                 val maxPage = ((total - 1) / pageSize) + 1
                 val reqPage = args.getOrNull(1)?.toIntOrNull()?.coerceIn(1, maxPage) ?: 1
                 val from = (reqPage - 1) * pageSize
                 val to = (from + pageSize).coerceAtMost(total)
+
                 if (sender is Player) {
                     sendCompactList(sender, all.subList(from, to), reqPage, maxPage, from + 1, to, total)
                 } else {
@@ -367,7 +485,11 @@ class TrackCommand(
                 return true
             }
             "info" -> {
-                if (args.size < 2) { sender.sendMessage("§eUsage: /track info <name>"); return true }
+                if (args.size < 2) {
+                    sender.sendMessage("§eUsage: /track info <name>")
+                    return true
+                }
+
                 val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (sender is Player) sendInfoPanel(sender, t) else sendInfoConsole(sender, t)
                 return true
@@ -375,51 +497,62 @@ class TrackCommand(
             "tp" -> {
                 if (sender !is Player) { sender.sendMessage("§cOnly players can teleport."); return true }
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track tp <name>"); return true }
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
-                if (!canManage(sender, t)) { sender.sendMessage("§cYou can't use this tracker."); return true }
-                val world = plugin.server.getWorld(t.world)
-                if (world == null) { sender.sendMessage("§cWorld '${t.world}' is not loaded."); return true }
-                val loc = org.bukkit.Location(world, t.x + 0.5, t.y + 1.0, t.z + 0.5)
+
+                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                if (!canManage(sender, tracker)) { sender.sendMessage("§cYou can't use this tracker."); return true }
+
+                val world = plugin.server.getWorld(tracker.world)
+                if (world == null) { sender.sendMessage("§cWorld '${tracker.world}' is not loaded."); return true }
+
+                val loc = org.bukkit.Location(world, tracker.x + 0.5, tracker.y + 1.0, tracker.z + 0.5)
                 sender.teleport(loc)
-                sender.sendMessage("§aTeleported to '${t.name}'.")
+                sender.sendMessage("§aTeleported to '${tracker.name}'.")
                 return true
             }
             "rebind" -> {
                 if (sender !is Player) { sender.sendMessage("§cOnly players can rebind trackers."); return true }
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track rebind <name>"); return true }
+
                 val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+
                 bind.startRebind(sender, t.name)
                 return true
             }
             "rename" -> {
-                if (args.size < 3) { sender.sendMessage("§eUsage: /track rename <oldName> <newName>"); return true }
+                if (args.size < 3) {
+                    sender.sendMessage("§eUsage: /track rename <oldName> <newName>")
+                    return true
+                }
+
                 val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+
                 val newName = args[2]
                 if (!namePattern.matcher(newName).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
                 if (store.exists(newName)) { sender.sendMessage("§cName already in use."); return true }
+
                 val ok = store.rename(t.name, newName)
                 if (ok) sender.sendMessage("§aRenamed '${t.name}' to '$newName'.") else sender.sendMessage("§cRename failed.")
                 return true
             }
             "title" -> {
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track title <name> <title> (use \"\" to clear)"); return true }
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
-                if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val title = joinTail(args, 2)
-                t.title = if (title.isBlank()) null else title
-                store.putAndSave(t)
+                tracker.title = if (title.isBlank()) null else title
+                store.putAndSave(tracker)
                 sender.sendMessage("§aTitle updated.")
                 return true
             }
             "description" -> {
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track description <name> <text> (use \"\" to clear)"); return true }
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
-                if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val desc = joinTail(args, 2)
-                t.description = if (desc.isBlank()) null else desc
-                store.putAndSave(t)
+                tracker.description = if (desc.isBlank()) null else desc
+                store.putAndSave(tracker)
                 sender.sendMessage("§aDescription updated.")
                 return true
             }
@@ -482,22 +615,40 @@ class TrackCommand(
         return true
     }
 
+    /**
+     * Sends a generic "Invalid value" message and returns true to satisfy
+     * the CommandExecutor contract for early-exit guard clauses.
+     */
     private fun badValue(sender: CommandSender): Boolean {
         sender.sendMessage("§cInvalid value.")
         return true
     }
 
+    /**
+     * Joins the tail of the argument array starting at [start] into a single String.
+     * If the merged string is wrapped in matching single or double quotes, the quotes are trimmed.
+     */
     private fun joinTail(args: Array<out String>, start: Int): String {
         val raw = args.copyOfRange(start, args.size).joinToString(" ")
         return if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith('\'') && raw.endsWith('\''))) raw.substring(1, raw.length - 1) else raw
     }
 
+    /**
+     * Returns true if the sender is allowed to manage the given tracker.
+     * Admins can always manage; otherwise the sender must be the owner and have chestnut.use.
+     */
     private fun canManage(sender: CommandSender, tracker: Tracker): Boolean {
         if (sender.hasPermission("chestnut.admin")) return true
         if (sender !is Player) return false
         return sender.hasPermission("chestnut.use") && tracker.owner == sender.uniqueId
     }
 
+    /**
+     * Sends an interactive placeholder helper to the sender.
+     *
+     * - For players: clickable chips to prefill /edittracker ... msg commands and example inserts.
+     * - For console: prints placeholders and example commands.
+     */
     private fun sendPlaceholderHelper(sender: CommandSender, tracker: Tracker, event: String) {
         val ph = availablePlaceholders(tracker.trigger)
         val isPlayer = sender is Player
@@ -531,16 +682,29 @@ class TrackCommand(
         }
     }
 
+    /**
+     * Returns a list of example templates for a given trigger event.
+     * Falls back to a simple default when no examples are provided.
+     */
     private fun buildExamples(trigger: Trigger, event: String): List<String> {
         val d = TriggerRegistry.descriptor(trigger)
         val key = event.lowercase()
         return d.examples[key] ?: listOf("<name> event: <event>")
     }
 
+    /**
+     * Computes the display title for a tracker, preferring a custom title over the internal name.
+     */
     private fun displayTitle(t: Tracker): String = t.title?.takeIf { it.isNotBlank() } ?: t.name
 
+    /**
+     * Returns the user-facing trigger label for a tracker (descriptor display name).
+     */
     private fun triggerLabel(t: Tracker): String = xyz.bellbot.chestnut.triggers.TriggerRegistry.descriptor(t.trigger).displayName
 
+    /**
+     * Derives a human-friendly state text and color for the tracker, if applicable.
+     */
     private fun stateText(t: Tracker): Pair<String, NamedTextColor> = when (t.trigger) {
         Trigger.TORCH_TOGGLE -> when (t.lastTorchLit) {
             true -> "Lit" to NamedTextColor.GOLD
@@ -550,6 +714,10 @@ class TrackCommand(
         else -> "Idle" to NamedTextColor.GRAY
     }
 
+    /**
+     * Builds a rich hover tooltip for a tracker chip in the compact list.
+     * Includes title, trigger, state, coordinates, optional description, and a hint.
+     */
     private fun buildHover(t: Tracker): Component {
         val titleRaw = t.title?.takeIf { it.isNotBlank() }
         val (state, stateColor) = stateText(t)
@@ -576,6 +744,10 @@ class TrackCommand(
         return hover
     }
 
+    /**
+     * Renders a compact, clickable list of trackers for players.
+     * Includes a header with range and total, chip separators, and a footer with page info.
+     */
     private fun sendCompactList(player: Player, pageItems: List<Tracker>, page: Int, maxPage: Int, fromIndex: Int, toIndex: Int, total: Int) {
         val header = Component.empty()
             .append(Component.text(player.name, TextColor.fromHexString("#24fb9c")))
@@ -584,6 +756,7 @@ class TrackCommand(
             .append(Component.text("$fromIndex-$toIndex", TextColor.fromHexString("#24fb9c")))
             .append(Component.text(" of $total)", TextColor.fromHexString("#24fb9c")))
         player.sendMessage(header)
+
         var first = true
         var line = Component.empty()
         for (t in pageItems) {
@@ -593,22 +766,47 @@ class TrackCommand(
                     .append(Component.text(" ", NamedTextColor.GRAY))
             }
             first = false
+
             val chip = Component.text("[${t.name}]", NamedTextColor.WHITE)
                 .clickEvent(ClickEvent.runCommand("/edittracker ${t.name} info"))
                 .hoverEvent(HoverEvent.showText(buildHover(t)))
             line = line.append(chip)
         }
         player.sendMessage(line)
+
         val footer = Component.text("Page $page/$maxPage", TextColor.fromHexString("#24fb9c"))
         player.sendMessage(footer)
     }
 
-    private fun makeButton(label: String, color: NamedTextColor, command: String, hover: String, run: Boolean = true): Component {
-        val comp = Component.text(label, color)
-        return if (run) comp.clickEvent(ClickEvent.runCommand(command)).hoverEvent(HoverEvent.showText(Component.text(hover, NamedTextColor.GRAY)))
-        else comp.clickEvent(ClickEvent.suggestCommand(command)).hoverEvent(HoverEvent.showText(Component.text(hover, NamedTextColor.GRAY)))
+    /**
+     * Utility to create a clickable text component.
+     * When [run] is true, clicking runs the command; otherwise, it suggests it for editing.
+     */
+    private fun makeButton(
+        label: String,
+        color: NamedTextColor,
+        command: String,
+        hover: String,
+        run: Boolean = true,
+    ): Component {
+        // Create the base label component and attach a consistent hover tooltip.
+        val base = Component.text(label, color)
+        val hoverComponent = HoverEvent.showText(Component.text(hover, NamedTextColor.GRAY))
+
+        val withHover = base.hoverEvent(hoverComponent)
+
+        // Attach click behavior: run the command or suggest it for editing.
+        return if (run) {
+            withHover.clickEvent(ClickEvent.runCommand(command))
+        } else {
+            withHover.clickEvent(ClickEvent.suggestCommand(command))
+        }
     }
 
+    /**
+     * Sends a rich, interactive info panel to a player with actionable buttons
+     * (teleport, test, enable/disable, delete, rebind, and edit operations).
+     */
     private fun sendInfoPanel(p: Player, t: Tracker) {
         val internalName = t.name
         // Header (dark aqua line; internal name bold aqua)
@@ -684,6 +882,9 @@ class TrackCommand(
         p.sendMessage(line)
     }
 
+    /**
+     * Sends a concise, plain-text info panel to non-player senders (e.g., console).
+     */
     private fun sendInfoConsole(sender: CommandSender, t: Tracker) {
         val title = displayTitle(t)
         sender.sendMessage("§fViewing details for tracker: §b$title")
@@ -694,6 +895,10 @@ class TrackCommand(
         sender.sendMessage("§6📍 ${t.world}, ${t.x}, ${t.y}, ${t.z}")
     }
 
+    /**
+     * Sends a concise help overview listing modern commands and legacy notes.
+     * Includes examples and admin-only entries when applicable.
+     */
     private fun sendHelp(sender: CommandSender) {
         sender.sendMessage("§6Chestnut commands:")
         sender.sendMessage("§e/trackerlist [page] §7- List your trackers (alias: /trackers)")
@@ -706,6 +911,15 @@ class TrackCommand(
         sender.sendMessage("§7Placeholders: <name> <trigger> <event> <world> <x> <y> <z> <time> <state> <user> <uuid> <items> <page> <book_title> <book_author> <book_pages> <has_book>")
     }
 
+    /**
+     * Provides tab completion for both modern and legacy commands.
+     *
+     * Modern commands supported:
+     * - settracker, deltracker, edittracker, trackerlist, chestnut
+     *
+     * Legacy:
+     * - track (with its subcommands).
+     */
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): MutableList<String> {
         fun filter(options: List<String>, prefix: String): MutableList<String> = options.filter { it.startsWith(prefix, ignoreCase = true) }.toMutableList()
         val cmd = command.name.lowercase(Locale.getDefault())

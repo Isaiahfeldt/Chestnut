@@ -19,90 +19,153 @@ class InventoryOpenListener(
     private val webhook: WebhookSender,
 ) : Listener {
 
+    /**
+     * Listens for container inventory open/close events and sends formatted webhooks
+     * for trackers bound to that block location.
+     *
+     * Responsibilities:
+     * - Locate trackers bound to the container's block location
+     * - Apply per-tracker debounce
+     * - Render templates (optionally including the <items> placeholder)
+     * - Enqueue a webhook payload
+     */
+
+    private companion object {
+        private const val TICK_MILLIS = 50L
+    }
+
+    /**
+     * Returns true if either the body or footer template references the <items> placeholder.
+     */
     private fun needsItems(bodyTemplate: String?, footerTemplate: String): Boolean {
-        fun hasItems(s: String?): Boolean = s?.contains("<items>", ignoreCase = true) == true
+        fun hasItems(s: String?): Boolean {
+            return s?.contains("<items>", ignoreCase = true) == true
+        }
+
         return hasItems(bodyTemplate) || hasItems(footerTemplate)
     }
 
+    /**
+     * Handles InventoryOpenEvent and emits an "open" notification for matching trackers.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    fun onInventoryOpen(e: InventoryOpenEvent) {
-        val loc = e.inventory.location ?: return
-        val world = loc.world?.name ?: return
-        val x = loc.blockX
-        val y = loc.blockY
-        val z = loc.blockZ
-        val player = e.player
+    fun onInventoryOpen(event: InventoryOpenEvent) {
+        val location = event.inventory.location ?: return
+        val world = location.world?.name ?: return
+
+        val x = location.blockX
+        val y = location.blockY
+        val z = location.blockZ
+
+        val player = event.player
 
         val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.INVENTORY_OPEN)
-        for (t in matches) {
-            if (!t.options.enabled) continue
+        for (tracker in matches) {
+            if (!tracker.options.enabled) continue
+
             val now = System.currentTimeMillis()
-            val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
-            if (now - t.lastEventAtTick < debounceMs) continue
-            t.lastEventAtTick = now
-            val bodyTpl = t.templates["open"]
-            val wantsItems = needsItems(bodyTpl, config.embedFooter)
-            val includeItems = wantsItems
-            val rendered = TemplateRenderer.render(
-                bodyTpl,
-                t,
-                "open",
-                TemplateRenderer.RenderOptions(
-                    user = player.name,
-                    uuid = player.uniqueId.toString(),
-                    includeItems = includeItems,
-                    inventory = if (includeItems) e.inventory else null,
-                    testPrefix = null
-                )
+
+            val debounceTicks = tracker.options.debounceTicks.coerceAtLeast(0)
+            val debounceMs = debounceTicks * TICK_MILLIS
+            if (now - tracker.lastEventAtTick < debounceMs) continue
+
+            tracker.lastEventAtTick = now
+
+            val bodyTemplate = tracker.templates["open"]
+            val includeItems = needsItems(bodyTemplate, config.embedFooter)
+
+            val renderOptions = TemplateRenderer.RenderOptions(
+                user = player.name,
+                uuid = player.uniqueId.toString(),
+                includeItems = includeItems,
+                inventory = if (includeItems) event.inventory else null,
+                testPrefix = null,
             )
-            val itemsSummary = if (includeItems) TemplateRenderer.render(
-                "<items>",
-                t,
+
+            val rendered = TemplateRenderer.render(
+                bodyTemplate,
+                tracker,
                 "open",
-                TemplateRenderer.RenderOptions(includeItems = true, inventory = e.inventory)
-            ) else null
-            webhook.enqueue(t, rendered, "open", itemsSummary)
+                renderOptions,
+            )
+
+            val itemsSummary = if (includeItems) {
+                TemplateRenderer.render(
+                    "<items>",
+                    tracker,
+                    "open",
+                    TemplateRenderer.RenderOptions(
+                        includeItems = true,
+                        inventory = event.inventory,
+                    ),
+                )
+            } else {
+                null
+            }
+
+            webhook.enqueue(tracker, rendered, "open", itemsSummary)
         }
     }
 
+    /**
+     * Handles InventoryCloseEvent and emits a "close" notification for matching trackers.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    fun onInventoryClose(e: InventoryCloseEvent) {
-        val loc = e.inventory.location ?: return
-        val world = loc.world?.name ?: return
-        val x = loc.blockX
-        val y = loc.blockY
-        val z = loc.blockZ
-        val player = e.player
+    fun onInventoryClose(event: InventoryCloseEvent) {
+        val location = event.inventory.location ?: return
+        val world = location.world?.name ?: return
+
+        val x = location.blockX
+        val y = location.blockY
+        val z = location.blockZ
+
+        val player = event.player
 
         val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.INVENTORY_OPEN)
-        for (t in matches) {
-            if (!t.options.enabled) continue
+        for (tracker in matches) {
+            if (!tracker.options.enabled) continue
+
             val now = System.currentTimeMillis()
-            val debounceMs = (t.options.debounceTicks.coerceAtLeast(0) * 50L)
-            if (now - t.lastEventAtTick < debounceMs) continue
-            t.lastEventAtTick = now
-            val bodyTpl = t.templates["close"]
-            val wantsItems = needsItems(bodyTpl, config.embedFooter)
-            val includeItems = wantsItems
-            val rendered = TemplateRenderer.render(
-                bodyTpl,
-                t,
-                "close",
-                TemplateRenderer.RenderOptions(
-                    user = player.name,
-                    uuid = player.uniqueId.toString(),
-                    includeItems = includeItems,
-                    inventory = if (includeItems) e.inventory else null,
-                    testPrefix = null
-                )
+
+            val debounceTicks = tracker.options.debounceTicks.coerceAtLeast(0)
+            val debounceMs = debounceTicks * TICK_MILLIS
+            if (now - tracker.lastEventAtTick < debounceMs) continue
+
+            tracker.lastEventAtTick = now
+
+            val bodyTemplate = tracker.templates["close"]
+            val includeItems = needsItems(bodyTemplate, config.embedFooter)
+
+            val renderOptions = TemplateRenderer.RenderOptions(
+                user = player.name,
+                uuid = player.uniqueId.toString(),
+                includeItems = includeItems,
+                inventory = if (includeItems) event.inventory else null,
+                testPrefix = null,
             )
-            val itemsSummary = if (includeItems) TemplateRenderer.render(
-                "<items>",
-                t,
+
+            val rendered = TemplateRenderer.render(
+                bodyTemplate,
+                tracker,
                 "close",
-                TemplateRenderer.RenderOptions(includeItems = true, inventory = e.inventory)
-            ) else null
-            webhook.enqueue(t, rendered, "close", itemsSummary)
+                renderOptions,
+            )
+
+            val itemsSummary = if (includeItems) {
+                TemplateRenderer.render(
+                    "<items>",
+                    tracker,
+                    "close",
+                    TemplateRenderer.RenderOptions(
+                        includeItems = true,
+                        inventory = event.inventory,
+                    ),
+                )
+            } else {
+                null
+            }
+
+            webhook.enqueue(tracker, rendered, "close", itemsSummary)
         }
     }
 }
