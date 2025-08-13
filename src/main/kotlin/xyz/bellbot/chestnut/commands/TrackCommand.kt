@@ -460,10 +460,7 @@ class TrackCommand(
             }
             "list" -> {
                 val all = store.all().sortedBy { it.name.lowercase() }
-                if (all.isEmpty()) {
-                    sender.sendMessage("§7No trackers.")
-                    return true
-                }
+                if (all.isEmpty()) {  sender.sendMessage("§7No trackers."); return true }
 
                 val pageSize = 5
                 val total = all.size
@@ -485,10 +482,7 @@ class TrackCommand(
                 return true
             }
             "info" -> {
-                if (args.size < 2) {
-                    sender.sendMessage("§eUsage: /track info <name>")
-                    return true
-                }
+                if (args.size < 2) { sender.sendMessage("§eUsage: /track info <name>"); return true }
 
                 val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (sender is Player) sendInfoPanel(sender, t) else sendInfoConsole(sender, t)
@@ -520,18 +514,12 @@ class TrackCommand(
                 return true
             }
             "rename" -> {
-                if (args.size < 3) {
-                    sender.sendMessage("§eUsage: /track rename <oldName> <newName>")
-                    return true
-                }
-
+                if (args.size < 3) { sender.sendMessage("§eUsage: /track rename <oldName> <newName>"); return true }
                 val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
-
                 val newName = args[2]
                 if (!namePattern.matcher(newName).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
                 if (store.exists(newName)) { sender.sendMessage("§cName already in use."); return true }
-
                 val ok = store.rename(t.name, newName)
                 if (ok) sender.sendMessage("§aRenamed '${t.name}' to '$newName'.") else sender.sendMessage("§cRename failed.")
                 return true

@@ -14,12 +14,25 @@ import xyz.bellbot.chestnut.store.TrackersStore
 import xyz.bellbot.chestnut.util.TemplateRenderer
 import xyz.bellbot.chestnut.webhook.WebhookSender
 
+/**
+ * Listens for lectern interactions and page changes, and sends webhooks for matching trackers.
+ *
+ * Responsibilities:
+ * - Find trackers bound to the lectern's block location
+ * - Apply per-tracker debounce (in ticks converted to milliseconds)
+ * - Render templates with contextual data (user, page, book metadata)
+ * - Enqueue the webhook payload
+ */
 class LecternListener(
     private val plugin: JavaPlugin,
     private val store: TrackersStore,
     private val config: ChestnutConfig,
     private val webhook: WebhookSender,
 ) : Listener {
+
+    private companion object {
+        private const val TICK_MILLIS = 50L
+    }
 
     private fun matchAndSend(
         world: String,
