@@ -100,7 +100,7 @@ class TrackCommand(
                 return true
             }
 
-            if (store.exists(name)) {
+            if (store.isTrackerPresent(name)) {
                 sender.sendMessage("§cTracker with that name already exists.")
                 return true
             }
@@ -125,7 +125,7 @@ class TrackCommand(
                     sender.sendMessage("§cNo permission to delete all.")
                     return true
                 }
-                val names = store.all().map { it.name }.toList()
+                val names = store.getAllTrackers().map { it.name }.toList()
                 var count = 0
                 for (n in names) {
                     store.removeAndSave(n)
@@ -135,7 +135,7 @@ class TrackCommand(
                 return true
             }
 
-            val tracker = store.get(target)
+            val tracker = store.getTrackerByName(target)
             if (tracker == null) {
                 sender.sendMessage("§aTracker removed (not found).")
                 return true
@@ -155,7 +155,7 @@ class TrackCommand(
             }
             val name = args[0]
             val sub = args[1].lowercase(Locale.getDefault())
-            val tracker = store.get(name) ?: run {
+            val tracker = store.getTrackerByName(name) ?: run {
                 sender.sendMessage("§cTracker not found.")
                 return true
             }
@@ -174,7 +174,7 @@ class TrackCommand(
                         sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -")
                         return true
                     }
-                    if (store.exists(newName)) {
+                    if (store.isTrackerPresent(newName)) {
                         sender.sendMessage("§cName already in use.")
                         return true
                     }
@@ -364,7 +364,7 @@ class TrackCommand(
             return true
         }
         if (isCmd("trackerlist", "trackers")) {
-            val all = store.all().sortedBy { it.name.lowercase() }
+            val all = store.getAllTrackers().sortedBy { it.name.lowercase() }
             if (all.isEmpty()) { sender.sendMessage("§7No trackers."); return true }
             val pageSize = 5
             val total = all.size
@@ -395,7 +395,7 @@ class TrackCommand(
                     sender.sendMessage("§aChestnut config reloaded. Webhook URL set: $urlOk§a. Embed color: ${config.embedColor}.")
                 }
                 "status" -> {
-                    val total = store.all().size
+                    val total = store.getAllTrackers().size
                     val urlOk = if (config.webhookUrl.isNotBlank()) "set" else "unset"
                     sender.sendMessage("§aChestnut status: trackers=$total, webhook=$urlOk")
                 }
@@ -418,29 +418,50 @@ class TrackCommand(
                 if (sender !is Player) { sender.sendMessage("§cOnly players can bind trackers."); return true }
                 if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission."); return true }
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track add <name> <trigger>"); return true }
+
                 val name = args[1]
                 val trigger = TriggerRegistry.resolve(args[2]) ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"); return true }
+
                 if (!namePattern.matcher(name).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-                if (store.exists(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
+                if (store.isTrackerPresent(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
+
                 bind.start(sender, name, trigger)
                 return true
             }
             "msg" -> {
-                if (args.size < 3) { sender.sendMessage("§eUsage: /track msg <name> <event> <template>"); return true }
+                if (args.size < 3) {
+                    sender.sendMessage("§eUsage: /track msg <name> <event> <template>")
+                    return true
+                }
+
                 val name = args[1]
-                val tracker = store.get(name) ?: run { sender.sendMessage("§cTracker not found."); return true }
-                if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+                val tracker = store.getTrackerByName(name) ?: run {
+                    sender.sendMessage("§cTracker not found.")
+                    return true
+                }
+
+                if (!canManage(sender, tracker)) {
+                    sender.sendMessage("§cYou don't own this tracker.")
+                    return true
+                }
                 val event = args[2].lowercase()
-                if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) { sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}"); return true }
+
+                if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) {
+                    sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}")
+                    return true
+                }
+
                 // If no template provided, show a helper with placeholders and examples
                 if (args.size == 3) {
                     sendPlaceholderHelper(sender, tracker, event)
                     return true
                 }
+
                 val template = joinTail(args, 3)
                 tracker.templates[event] = template
                 store.putAndSave(tracker)
                 sender.sendMessage("§aTemplate for '$event' updated for '${tracker.name}'.")
+
                 // Local preview after save (do not send to Discord)
                 val player = sender as? Player
                 val preview = TemplateRenderer.render(
@@ -455,11 +476,12 @@ class TrackCommand(
                         testPrefix = ""
                     )
                 )
+
                 sender.sendMessage("§7Preview: §f$preview")
                 return true
             }
             "list" -> {
-                val all = store.all().sortedBy { it.name.lowercase() }
+                val all = store.getAllTrackers().sortedBy { it.name.lowercase() }
                 if (all.isEmpty()) {  sender.sendMessage("§7No trackers."); return true }
 
                 val pageSize = 5
@@ -484,7 +506,7 @@ class TrackCommand(
             "info" -> {
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track info <name>"); return true }
 
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val t = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (sender is Player) sendInfoPanel(sender, t) else sendInfoConsole(sender, t)
                 return true
             }
@@ -492,7 +514,7 @@ class TrackCommand(
                 if (sender !is Player) { sender.sendMessage("§cOnly players can teleport."); return true }
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track tp <name>"); return true }
 
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou can't use this tracker."); return true }
 
                 val world = plugin.server.getWorld(tracker.world)
@@ -507,7 +529,7 @@ class TrackCommand(
                 if (sender !is Player) { sender.sendMessage("§cOnly players can rebind trackers."); return true }
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track rebind <name>"); return true }
 
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val t = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
 
                 bind.startRebind(sender, t.name)
@@ -515,18 +537,18 @@ class TrackCommand(
             }
             "rename" -> {
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track rename <oldName> <newName>"); return true }
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val t = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val newName = args[2]
                 if (!namePattern.matcher(newName).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-                if (store.exists(newName)) { sender.sendMessage("§cName already in use."); return true }
+                if (store.isTrackerPresent(newName)) { sender.sendMessage("§cName already in use."); return true }
                 val ok = store.rename(t.name, newName)
                 if (ok) sender.sendMessage("§aRenamed '${t.name}' to '$newName'.") else sender.sendMessage("§cRename failed.")
                 return true
             }
             "title" -> {
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track title <name> <title> (use \"\" to clear)"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val title = joinTail(args, 2)
                 tracker.title = if (title.isBlank()) null else title
@@ -536,7 +558,7 @@ class TrackCommand(
             }
             "description" -> {
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track description <name> <text> (use \"\" to clear)"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val desc = joinTail(args, 2)
                 tracker.description = if (desc.isBlank()) null else desc
@@ -546,7 +568,7 @@ class TrackCommand(
             }
             "remove" -> {
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track remove <name>"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§aTracker removed (not found)."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§aTracker removed (not found)."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 store.removeAndSave(tracker.name)
                 sender.sendMessage("§aTracker '${tracker.name}' removed.")
@@ -555,7 +577,7 @@ class TrackCommand(
             "test" -> {
                 if (!config.enableTestCommand) { sender.sendMessage("§cTest command is disabled."); return true }
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track test <name> <event>"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val event = args[2].lowercase()
                 val template = tracker.templates[event]
@@ -578,7 +600,7 @@ class TrackCommand(
             }
             "set" -> {
                 if (args.size < 4) { sender.sendMessage("§eUsage: /track set <name> <key> <value>"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 when (args[2].lowercase()) {
                     "enabled" -> tracker.options.enabled = args[3].toBooleanStrictOrNull() ?: return badValue(sender)
@@ -928,17 +950,17 @@ class TrackCommand(
         }
         if (isCmd("deltracker", "delt")) {
             return when (args.size) {
-                0, 1 -> (store.all().map { it.name } + "all").sorted().toMutableList()
+                0, 1 -> (store.getAllTrackers().map { it.name } + "all").sorted().toMutableList()
                 else -> filter(listOf("--confirm"), args.last())
             }
         }
         if (isCmd("edittracker", "edittrack")) {
             return when (args.size) {
-                0, 1 -> store.all().map { it.name }.toMutableList()
+                0, 1 -> store.getAllTrackers().map { it.name }.toMutableList()
                 2 -> filter(listOf("rename", "title", "description", "msg", "rebind", "enable", "disable", "test", "tp", "info", "color", "thumbnail"), args[1])
                 3 -> when (args[1].lowercase(Locale.getDefault())) {
                     "test", "msg", "color", "thumbnail" -> {
-                        val t = store.get(args[0]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
                         val sub = args[1].lowercase(Locale.getDefault())
                         val events = t.trigger.events + if (sub == "color" || sub == "thumbnail") listOf("all") else emptyList()
                         filter(events, args[2])
@@ -949,7 +971,7 @@ class TrackCommand(
                     "color" -> filter(listOf("reset", "#FFCC00", "0x00FF00", "16711680"), args[3])
                     "thumbnail" -> filter(listOf("reset", "https://"), args[3])
                     "msg" -> {
-                        val t = store.get(args[0]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
                         val token = args.last()
                         val raw = token.trimStart('"', '\'')
                         if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
@@ -959,7 +981,7 @@ class TrackCommand(
                 else -> {
                     // When editing a message template, allow placeholder suggestions beyond the 4th argument
                     if (args[1].equals("msg", ignoreCase = true)) {
-                        val t = store.get(args[0]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
                         val token = args.last()
                         val raw = token.trimStart('"', '\'')
                         return if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
@@ -975,7 +997,7 @@ class TrackCommand(
             }
         }
         if (isCmd("trackerlist", "trackers")) {
-            val total = store.all().size
+            val total = store.getAllTrackers().size
             val pageSize = 5
             val maxPage = if (total == 0) 1 else ((total - 1) / pageSize) + 1
             val pages = (1..maxPage).map { it.toString() }
@@ -998,13 +1020,13 @@ class TrackCommand(
             }
             "msg" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     3 -> {
-                        val t = store.get(args[1]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[1]) ?: return mutableListOf()
                         filter(t.trigger.events, args[2])
                     }
                     else -> {
-                        val t = store.get(args[1]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[1]) ?: return mutableListOf()
                         val token = args.last()
                         val raw = token.trimStart('"', '\'')
                         if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
@@ -1013,7 +1035,7 @@ class TrackCommand(
             }
             "set" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     3 -> filter(listOf("enabled", "debounceTicks", "ratelimitPerMinute"), args[2])
                     4 -> when (args[2].lowercase()) {
                         "enabled" -> filter(listOf("true", "false"), args[3])
@@ -1024,13 +1046,13 @@ class TrackCommand(
             }
             "info", "tp", "rebind", "remove", "test", "title", "description" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     else -> mutableListOf()
                 }
             }
             "rename" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     else -> mutableListOf()
                 }
             }

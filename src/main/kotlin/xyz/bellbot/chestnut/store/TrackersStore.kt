@@ -12,56 +12,135 @@ import java.util.UUID
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Persists Tracker objects to trackers.yml and provides fast lookup and mutation operations.
+ *
+ * Also maintains an in-memory index keyed by world|x|y|z|TRIGGER for quick event dispatch.
+ */
 class TrackersStore(private val plugin: JavaPlugin) {
+    // Backing file for persisted trackers
     private val file: File = File(plugin.dataFolder, "trackers.yml")
+    // Primary map: tracker name -> Tracker
     private val trackersByName = ConcurrentHashMap<String, Tracker>()
     // Fast lookup index: world|x|y|z|TRIGGER -> list of trackers
     private val index = ConcurrentHashMap<String, MutableList<Tracker>>()
 
-    fun all(): Collection<Tracker> = trackersByName.values
-    fun get(name: String): Tracker? = trackersByName[name]
-    fun exists(name: String): Boolean = trackersByName.containsKey(name)
+    fun getAllTrackers(): Collection<Tracker> {
+        return trackersByName.values
+    }
 
+    fun getTrackerByName(name: String): Tracker? {
+        return trackersByName[name]
+    }
+
+    fun isTrackerPresent(name: String): Boolean {
+        return trackersByName.containsKey(name)
+    }
+
+    // Builds the composite index key used for fast lookup: world|x|y|z|TRIGGER
     private fun makeKey(world: String, x: Int, y: Int, z: Int, trigger: Trigger): String = "$world|$x|$y|$z|${'$'}{trigger.name}"
 
+    /**
+     * Ensures the tracker is present in the correct index bucket based on its world/coords/trigger.
+     *
+     * Moves it between buckets if its key is changed.
+     */
     private fun indexTracker(t: Tracker) {
         val key = makeKey(t.world, t.x, t.y, t.z, t.trigger)
-        if (t.indexKey == key) return
-        // Remove from previous bucket if present
-        t.indexKey?.let { old -> index[old]?.remove(t) }
-        val list = index.computeIfAbsent(key) { Collections.synchronizedList(mutableListOf()) }
-        if (!list.contains(t)) list.add(t)
+
+        if (t.indexKey == key) {
+            return
+        }
+
+        // Remove from the previous bucket if present
+        t.indexKey?.let { oldKey ->
+            index[oldKey]?.remove(t)
+        }
+
+        val list = index.computeIfAbsent(key) {
+            Collections.synchronizedList(mutableListOf())
+        }
+
+        if (!list.contains(t)) {
+            list.add(t)
+        }
+
         t.indexKey = key
     }
 
+    /**
+     * Removes the tracker from its current index bucket, if any.
+     */
     private fun deindexTracker(t: Tracker) {
-        t.indexKey?.let { old -> index[old]?.remove(t) }
+        t.indexKey?.let { oldKey ->
+            index[oldKey]?.remove(t)
+        }
+
         t.indexKey = null
     }
 
-    fun byLocationAndTrigger(world: String, x: Int, y: Int, z: Int, trigger: Trigger): List<Tracker> =
-        index[makeKey(world, x, y, z, trigger)]?.toList() ?: emptyList()
+    /**
+     * Returns trackers bound to the exact world/x/y/z and trigger.
+     */
+    fun byLocationAndTrigger(
+        world: String,
+        x: Int,
+        y: Int,
+        z: Int,
+        trigger: Trigger
+    ): List<Tracker> {
+        val key = makeKey(world, x, y, z, trigger)
+        val bucket = index[key]
 
+        return bucket?.toList() ?: emptyList()
+    }
+
+    /**
+     * Inserts or replaces the tracker, re-indexes it, and persists to disk.
+     */
     fun putAndSave(tracker: Tracker) {
         trackersByName[tracker.name] = tracker
+
         indexTracker(tracker)
+
         save()
     }
 
+    /**
+     * Removes a tracker by name, de-indexes it if present, and persists to disk.
+     */
     fun removeAndSave(name: String) {
-        trackersByName.remove(name)?.let { deindexTracker(it) }
+        val removed = trackersByName.remove(name)
+
+        if (removed != null) {
+            deindexTracker(removed)
+        }
+
         save()
     }
 
+    /**
+     * Renames a tracker if the new name is available; persists the change.
+     */
     fun rename(oldName: String, newName: String): Boolean {
-        if (trackersByName.containsKey(newName)) return false
-        val t = trackersByName.remove(oldName) ?: return false
-        t.name = newName
-        trackersByName[newName] = t
+        if (trackersByName.containsKey(newName)) {
+            return false
+        }
+
+        val tracker = trackersByName.remove(oldName) ?: return false
+
+        tracker.name = newName
+        trackersByName[newName] = tracker
+
         save()
         return true
     }
 
+    /**
+     * Loads trackers from trackers.yml into memory and rebuilds the index.
+     *
+     * Returns the number of trackers successfully loaded.
+     */
     fun load(): Int {
         if (!file.exists()) {
             plugin.dataFolder.mkdirs()
@@ -132,6 +211,9 @@ class TrackersStore(private val plugin: JavaPlugin) {
         return loaded
     }
 
+    /**
+     * Saves all trackers to trackers.yml in a stable, readable order.
+     */
     fun save() {
         val yml = YamlConfiguration()
         val root = yml.createSection("trackers")

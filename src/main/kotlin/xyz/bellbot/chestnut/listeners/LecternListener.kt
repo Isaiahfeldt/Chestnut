@@ -36,6 +36,18 @@ class LecternListener(
     }
 
     /**
+     * Resolve a user-facing book title for lectern events.
+     * - If a non-blank title exists, use it.
+     * - If no title exists and the item is a WRITABLE_BOOK, return "writable book".
+     * - Otherwise, fall back to "Book".
+     */
+    private fun resolveBookTitle(item: org.bukkit.inventory.ItemStack?, meta: BookMeta?): String {
+        val t = meta?.title
+        if (t != null && t.isNotBlank()) return t
+        return if (item?.type == Material.WRITABLE_BOOK) "writable book" else "Book"
+    }
+
+    /**
      * Finds trackers at the given location for Trigger.LECTERN, applies debounce,
      * renders the corresponding template, and enqueues a webhook.
      *
@@ -97,7 +109,7 @@ class LecternListener(
         val hasBook = inventoryItem != null && !inventoryItem.type.isAir
 
         val meta = inventoryItem?.itemMeta as? BookMeta
-        val title = meta?.title ?: "Book"
+        val title = resolveBookTitle(inventoryItem, meta)
         val author = meta?.author ?: ""
         val pages = meta?.pageCount ?: 0
 
@@ -150,7 +162,7 @@ class LecternListener(
                 // Heuristic "open": interaction did not change book presence, but a book is present
                 if (afterHasBook) {
                     val meta = afterItem?.itemMeta as? BookMeta
-                    val title = meta?.title ?: "Book"
+                    val title = resolveBookTitle(afterItem, meta)
                     val author = meta?.author ?: ""
                     val pages = meta?.pageCount ?: 0
 
@@ -171,7 +183,7 @@ class LecternListener(
 
             if (afterHasBook) {
                 val meta = afterItem?.itemMeta as? BookMeta
-                val title = meta?.title ?: "Book"
+                val title = resolveBookTitle(afterItem, meta)
                 val author = meta?.author ?: ""
                 val pages = meta?.pageCount ?: 0
 
@@ -188,7 +200,7 @@ class LecternListener(
                 }
             } else {
                 val meta = beforeItem?.itemMeta as? BookMeta
-                val title = meta?.title ?: "Book"
+                val title = resolveBookTitle(beforeItem, meta)
                 val author = meta?.author ?: ""
                 val pages = meta?.pageCount ?: 0
 
