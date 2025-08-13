@@ -97,6 +97,68 @@ whenever it is opened.
 Now every time the chest is used, an embed will be posted to your webhook with
 the configured title, description, color, and thumbnail.
 
+Here’s a ready-to-drop-in example guide for the new `--clear`, `--enable`, and `--disable` flags, written in the same style as your “Monitoring a Mailbox” example:
+
+---
+
+## Example: Fine-Tuning Event Messages
+
+Say you’ve set up a tracker for a lectern in your library, but you only care about when books are inserted or removed, not every single page turn. Here’s how you could clean it up:
+
+1. **Create the tracker as usual, if you haven't already:**
+
+   ```
+   /settracker library_lectern lectern  
+   ```
+
+    * **library\_lectern** = the name you give this tracker
+    * **lectern** = the type of block to track
+
+
+2. **Disable the events you don’t want:**
+
+   ```
+   /edittracker library_lectern msg --disable page_change  
+   /edittracker library_lectern msg --disable open  
+   /edittracker library_lectern msg --disable close  
+   ```
+
+   This tells Chestnut to ignore those events completely.
+
+
+3. **Revert a custom message back to default:**
+
+   Maybe you experimented with a custom message for `insert_book` but decided you liked the default better:
+
+   ```
+   /edittracker library_lectern msg --clear insert_book  
+   ```
+
+4. **Re-enable an event later:**
+
+   If you change your mind and want `page_change` events again:
+
+   ```
+   /edittracker library_lectern msg --enable page_change  
+   ```
+
+5. **Check your settings:**
+
+   ```
+   /edittracker library_lectern view  
+   ```
+
+   This shows which events are enabled/disabled and what messages they’ll send.
+
+>Pro Tip: Want to wipe the slate clean?
+<br>Use `--clear all` to instantly reset all events back to their default messages for that tracker.
+
+**Result:** Your lectern tracker now only sends alerts when books are inserted or removed, keeping your Discord feed tidy while still tracking what matters.
+
+---
+
+
+
 ## Permissions
 
 - `chestnut.use` – Allows players to create and manage trackers.
