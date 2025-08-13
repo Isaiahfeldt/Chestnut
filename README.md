@@ -153,10 +153,9 @@ Say you’ve set up a tracker for a lectern in your library, but you only care a
 >Pro Tip: Want to wipe the slate clean?
 <br>Use `--clear all` to instantly reset all events back to their default messages for that tracker.
 
-**Result:** Your lectern tracker now only sends alerts when books are inserted or removed, keeping your Discord feed tidy while still tracking what matters.
+**Result:** Your lectern tracker now only sends alerts when books are inserted or page turned, keeping your Discord feed tidy while still tracking what matters.
 
 ---
-
 
 
 ## Permissions
