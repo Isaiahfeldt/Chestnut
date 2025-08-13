@@ -31,13 +31,13 @@ More block types may be added over time or by request.
 
 ## Commands
 
-| Command                            | Description                                                                                                                           |
-|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| `/settracker <name> <trigger>`     | Start creating a tracker by naming it and choosing a trigger. You’ll have 60 seconds to right-click an appropriate block to bind it.  |
-| `/edittracker <name> …`            | Change messages, colors, thumbnails and more.                                                                                         |
-| `/trackerlist [page]`              | Show all trackers with an interactive menu to quickly make simple changes to trackers (based on Husk Homes).                          |
-| `/deltracker <name\|all>`          | Remove trackers.                                                                                                                      |
-| `/chestnut <help\|reload\|status>` | Administrative actions.                                                                                                               |
+| Command                            | Description                                                                                                                          |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `/settracker <name> <trigger>`     | Start creating a tracker by naming it and choosing a trigger. You’ll have 15 seconds to right-click an appropriate block to bind it. |
+| `/edittracker <name> …`            | Change messages, colors, thumbnails and more.                                                                                        |
+| `/trackerlist [page]`              | Show all trackers with an interactive menu to quickly make simple changes to trackers (based on Husk Homes).                         |
+| `/deltracker <name\|all>`          | Remove trackers.                                                                                                                     |
+| `/chestnut <help\|reload\|status>` | Administrative actions.                                                                                                              |
 
 ## Trigger Reference
 
@@ -69,7 +69,7 @@ whenever it is opened.
         * `redstone_torch` – a redstone torch turning on/off
         * `lectern` – a lectern’s book actions and reading 
     
-    After running the command, you’ll have **60 seconds** to right-click the chest to bind it to the tracker.
+    After running the command, you’ll have **15 seconds** to right-click the chest to bind it to the tracker.
 
 
 2. Customize the messages sent via webhook:

@@ -46,11 +46,11 @@ class BindManager(
     private val disconnectNotices = ConcurrentHashMap<UUID, Session>()
 
     private companion object {
-        // 60 seconds in server ticks
-        private const val TIMEOUT_TICKS = 20L * 60
+        // 15 seconds in server ticks
+        private const val TIMEOUT_TICKS = 20L * 15
 
-        // 5 seconds in server ticks
-        private const val REJOIN_NOTICE_TICKS = 20L * 5
+        // 2 seconds in server ticks
+        private const val REJOIN_NOTICE_TICKS = 20L * 3
     }
 
     /**
@@ -68,7 +68,7 @@ class BindManager(
         val replaced = sessions.put(player.uniqueId, session)
         if (replaced != null) player.sendMessage("§eReplacing previous bind session.")
 
-        player.sendMessage("§aRight-click a block to bind '$name'… (60s)")
+        player.sendMessage("§aRight-click a block to bind '$name'… (15s)")
 
         // Schedule timeout message
         scheduleTimeout(player, session)
@@ -94,7 +94,7 @@ class BindManager(
         val replaced = sessions.put(player.uniqueId, session)
         if (replaced != null) player.sendMessage("§eReplacing previous bind/rebind session.")
 
-        player.sendMessage("§aRight-click the new block location for '$name'… (60s)")
+        player.sendMessage("§aRight-click the new block location for '$name'… (15s)")
 
         // Schedule timeout message
         scheduleTimeout(player, session)
@@ -217,7 +217,7 @@ class BindManager(
                 val player = plugin.server.getPlayer(event.player.uniqueId) ?: return@Runnable
 
                 if (session.rebind) {
-                    player.sendMessage("§eRebind for '${session.name}' was cancelled because you disconnected. Tracker reverted.")
+                    player.sendMessage("§eWhoops — you poofed! Rebind for '${session.name}' cancelled, but your tracker’s safe and sound.")
                 } else {
                     player.sendMessage("§eBind for '${session.name}' was cancelled because you disconnected.")
                 }
