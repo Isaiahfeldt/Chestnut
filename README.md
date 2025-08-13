@@ -45,11 +45,11 @@ All triggers support basic tags like `<name>`, `<trigger>`, `<event>`, `<world>`
 <br>Some triggers add extra tags listed below. <br><br>**Note**: `<name>` defaults to the tracker's given title; otherwise it uses the tracker's id name. 
 
 
-| Trigger             | Events                                              | Extra tags                                                                                  |
-|---------------------|-----------------------------------------------------|---------------------------------------------------------------------------------------------|
-| `storage`           | `open`, `close`                                     | `<user>`, `<uuid>`, `<items>`                                                               |
-| `redstone_torch`    | `on`, `off`                                         | `<state>` (`lit` or `unlit`)                                                                |
-| `lectern`           | `insert_book`, `remove_book`, `page_change`, `open` | `<user>`, `<uuid>`, `<page>`, `<book_title>`, `<book_author>`, `<book_pages>`, `<has_book>` |
+| Trigger             | Events                                                      | Extra tags                                                                                  |
+|---------------------|-------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| `storage`           | `open`, `close`                                             | `<user>`, `<uuid>`, `<items>`                                                               |
+| `redstone_torch`    | `on`, `off`                                                 | `<state>` (`lit` or `unlit`)                                                                |
+| `lectern`           | `insert_book`, `remove_book`, `page_change`, `open`, `close` | `<user>`, `<uuid>`, `<page>`, `<book_title>`, `<book_author>`, `<book_pages>`, `<has_book>` |
 
 ## Example: Monitoring a Mailbox
 
