@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "xyz.bellbot"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories {
     mavenCentral()
@@ -17,6 +17,27 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+}
+
+// Load optional deployment directory from a .env file at project root.
+// If PLUGIN_DEPLOY_DIR is missing or .env doesn't exist, no copy task will be added.
+val pluginDeployDir: String? = run {
+    val envFile = rootProject.file(".env")
+    if (!envFile.exists()) null else runCatching {
+        val map = envFile.readLines().mapNotNull { raw ->
+            val line = raw.trim()
+            if (line.isEmpty() || line.startsWith("#")) return@mapNotNull null
+            val idx = line.indexOf('=')
+            if (idx <= 0) return@mapNotNull null
+            val key = line.substring(0, idx).trim()
+            var value = line.substring(idx + 1).trim()
+            if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.substring(1, value.length - 1)
+            }
+            key to value
+        }.toMap()
+        map["PLUGIN_DEPLOY_DIR"].takeUnless { it.isNullOrBlank() }
+    }.getOrNull()
 }
 
 tasks {
@@ -44,6 +65,24 @@ tasks {
 
     runServer {
         minecraftVersion("1.21") // run-paper will pick shadowJar automatically if present
+    }
+
+    // Conditionally add a copy task that places the built jar into PLUGIN_DEPLOY_DIR
+    if (!pluginDeployDir.isNullOrBlank()) {
+        register<Copy>("copyPluginToDeployDir") {
+            group = "distribution"
+            description = "Copies the built plugin jar to the configured PLUGIN_DEPLOY_DIR (.env)"
+            dependsOn("shadowJar")
+            // Copy the produced jar from build/libs
+            from(layout.buildDirectory.dir("libs")) {
+                include("*.jar")
+            }
+            into(file(pluginDeployDir!!))
+        }
+
+        named("build") {
+            finalizedBy("copyPluginToDeployDir")
+        }
     }
 }
 
