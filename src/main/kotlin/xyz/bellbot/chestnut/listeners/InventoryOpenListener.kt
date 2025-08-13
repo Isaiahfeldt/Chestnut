@@ -1,5 +1,6 @@
 package xyz.bellbot.chestnut.listeners
 
+import org.bukkit.Material
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
@@ -51,6 +52,8 @@ class InventoryOpenListener(
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onInventoryOpen(event: InventoryOpenEvent) {
         val location = event.inventory.location ?: return
+        val block = location.block
+        if (block.type == Material.LECTERN) return // Don't notify for lecterns', use @onLecternInventoryOpen instead.
         val world = location.world?.name ?: return
 
         val x = location.blockX
@@ -113,6 +116,8 @@ class InventoryOpenListener(
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onInventoryClose(event: InventoryCloseEvent) {
         val location = event.inventory.location ?: return
+        val block = location.block
+        if (block.type == Material.LECTERN) return
         val world = location.world?.name ?: return
 
         val x = location.blockX

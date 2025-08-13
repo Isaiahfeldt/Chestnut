@@ -6,6 +6,8 @@ import org.bukkit.block.Lectern
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
+import org.bukkit.event.inventory.InventoryCloseEvent
+import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.meta.BookMeta
 import org.bukkit.plugin.java.JavaPlugin
@@ -159,25 +161,7 @@ class LecternListener(
             val afterHasBook = afterItem != null && !afterItem.type.isAir
 
             if (beforeHasBook == afterHasBook) {
-                // Heuristic "open": interaction did not change book presence, but a book is present
-                if (afterHasBook) {
-                    val meta = afterItem?.itemMeta as? BookMeta
-                    val title = resolveBookTitle(afterItem, meta)
-                    val author = meta?.author ?: ""
-                    val pages = meta?.pageCount ?: 0
-
-                    matchAndSend(world, x, y, z, "open") { opts ->
-                        opts.copy(
-                            user = userName,
-                            uuid = userUuid,
-                            page = 1,
-                            bookTitle = title,
-                            bookAuthor = author,
-                            bookPages = pages,
-                            hasBook = true,
-                        )
-                    }
-                }
+                // No insert/remove. Inventory handlers will emit 'open'/'close' for lecterns.
                 return@Runnable
             }
 
@@ -218,4 +202,71 @@ class LecternListener(
             }
         })
     }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onLecternInventoryOpen(event: InventoryOpenEvent) {
+        val location = event.inventory.location ?: return
+        val block = location.block
+        if (block.type != Material.LECTERN) return
+
+        val world = location.world?.name ?: return
+        val x = location.blockX
+        val y = location.blockY
+        val z = location.blockZ
+
+        val lecternState = block.state as? Lectern ?: return
+        val item = lecternState.inventory.getItem(0)
+        val hasBook = item != null && !item.type.isAir
+
+        val meta = item?.itemMeta as? BookMeta
+        val title = resolveBookTitle(item, meta)
+        val author = meta?.author ?: ""
+        val pages = meta?.pageCount ?: 0
+
+        matchAndSend(world, x, y, z, "open") { opts ->
+            opts.copy(
+                user = event.player.name,
+                uuid = event.player.uniqueId.toString(),
+                page = 1,
+                bookTitle = title,
+                bookAuthor = author,
+                bookPages = pages,
+                hasBook = hasBook,
+            )
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onLecternInventoryClose(event: InventoryCloseEvent) {
+        val location = event.inventory.location ?: return
+        val block = location.block
+        if (block.type != Material.LECTERN) return
+
+        val world = location.world?.name ?: return
+        val x = location.blockX
+        val y = location.blockY
+        val z = location.blockZ
+
+        val lecternState = block.state as? Lectern ?: return
+        val item = lecternState.inventory.getItem(0)
+        val hasBook = item != null && !item.type.isAir
+
+        val meta = item?.itemMeta as? BookMeta
+        val title = resolveBookTitle(item, meta)
+        val author = meta?.author ?: ""
+        val pages = meta?.pageCount ?: 0
+
+        matchAndSend(world, x, y, z, "close") { opts ->
+            opts.copy(
+                user = event.player.name,
+                uuid = event.player.uniqueId.toString(),
+                page = 1,
+                bookTitle = title,
+                bookAuthor = author,
+                bookPages = pages,
+                hasBook = hasBook,
+            )
+        }
+    }
+
 }
