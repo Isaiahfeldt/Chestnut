@@ -65,6 +65,7 @@ class InventoryOpenListener(
         val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.INVENTORY_OPEN)
         for (tracker in matches) {
             if (!tracker.options.enabled) continue
+            if (tracker.options.disabledEvents.contains("open")) continue
 
             val now = System.currentTimeMillis()
 
@@ -129,6 +130,7 @@ class InventoryOpenListener(
         val matches = store.byLocationAndTrigger(world, x, y, z, Trigger.INVENTORY_OPEN)
         for (tracker in matches) {
             if (!tracker.options.enabled) continue
+            if (tracker.options.disabledEvents.contains("close")) continue
 
             val now = System.currentTimeMillis()
 

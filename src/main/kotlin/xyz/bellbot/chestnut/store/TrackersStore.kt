@@ -176,6 +176,7 @@ class TrackersStore(private val plugin: JavaPlugin) {
                 enabled = optSec?.getBoolean("enabled", true) ?: true,
                 debounceTicks = optSec?.getInt("debounceTicks", 4) ?: 4,
                 ratelimitPerMinute = optSec?.getInt("ratelimitPerMinute", 0) ?: 0,
+                disabledEvents = (optSec?.getStringList("disabledEvents")?.map { it.lowercase() }?.toMutableSet()) ?: mutableSetOf(),
             )
             val owner = try { UUID.fromString(ownerStr) } catch (e: Exception) { null }
             if (owner == null) {
@@ -238,6 +239,7 @@ class TrackersStore(private val plugin: JavaPlugin) {
             optSec.set("enabled", t.options.enabled)
             optSec.set("debounceTicks", t.options.debounceTicks)
             optSec.set("ratelimitPerMinute", t.options.ratelimitPerMinute)
+            optSec.set("disabledEvents", t.options.disabledEvents.sorted())
             sec.set("owner", t.owner.toString())
         }
         yml.save(file)

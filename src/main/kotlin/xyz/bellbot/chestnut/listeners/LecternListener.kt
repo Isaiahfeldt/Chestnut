@@ -67,6 +67,7 @@ class LecternListener(
 
         for (tracker in matches) {
             if (!tracker.options.enabled) continue
+            if (tracker.options.disabledEvents.contains(eventName)) continue
 
             val now = System.currentTimeMillis()
             val debounceTicks = tracker.options.debounceTicks.coerceAtLeast(0)
@@ -242,31 +243,59 @@ class LecternListener(
         val block = location.block
         if (block.type != Material.LECTERN) return
 
-        val world = location.world?.name ?: return
-        val x = location.blockX
-        val y = location.blockY
-        val z = location.blockZ
+        val beforeLectern = block.state as? Lectern ?: return
+        val beforeItem = beforeLectern.inventory.getItem(0)
+        val beforeHasBook = beforeItem != null && !beforeItem.type.isAir
 
-        val lecternState = block.state as? Lectern ?: return
-        val item = lecternState.inventory.getItem(0)
-        val hasBook = item != null && !item.type.isAir
+        plugin.server.scheduler.runTask(plugin, Runnable {
+            val afterLectern = block.state as? Lectern ?: return@Runnable
+            val afterItem = afterLectern.inventory.getItem(0)
+            val afterHasBook = afterItem != null && !afterItem.type.isAir
 
-        val meta = item?.itemMeta as? BookMeta
-        val title = resolveBookTitle(item, meta)
-        val author = meta?.author ?: ""
-        val pages = meta?.pageCount ?: 0
+            val world = location.world?.name ?: return@Runnable
+            val x = location.blockX
+            val y = location.blockY
+            val z = location.blockZ
 
-        matchAndSend(world, x, y, z, "close") { opts ->
-            opts.copy(
-                user = event.player.name,
-                uuid = event.player.uniqueId.toString(),
-                page = 1,
-                bookTitle = title,
-                bookAuthor = author,
-                bookPages = pages,
-                hasBook = hasBook,
-            )
-        }
+            val lecternState = block.state as? Lectern ?: return@Runnable
+            val item = lecternState.inventory.getItem(0)
+            val hasBook = item != null && !item.type.isAir
+
+            if (beforeItem != null) {
+                val meta = item?.itemMeta as? BookMeta
+                val title = resolveBookTitle(item, meta)
+                val author = meta?.author ?: ""
+                val pages = meta?.pageCount ?: 0
+
+                matchAndSend(world, x, y, z, "close") { opts ->
+                    opts.copy(
+                        user = event.player.name,
+                        uuid = event.player.uniqueId.toString(),
+                        page = 1,
+                        bookTitle = title,
+                        bookAuthor = author,
+                        bookPages = pages,
+                        hasBook = hasBook,
+                    )
+                }
+            } else {
+                val meta = item?.itemMeta as? BookMeta
+                val title = resolveBookTitle(item, meta)
+                val author = meta?.author ?: ""
+                val pages = meta?.pageCount ?: 0
+
+                matchAndSend(world, x, y, z, "remove_book") { opts ->
+                    opts.copy(
+                        user = event.player.name,
+                        uuid = event.player.uniqueId.toString(),
+                        page = 1,
+                        bookTitle = title,
+                        bookAuthor = author,
+                        bookPages = pages,
+                        hasBook = false,
+                    )
+                }
+            }
+        })
     }
-
 }

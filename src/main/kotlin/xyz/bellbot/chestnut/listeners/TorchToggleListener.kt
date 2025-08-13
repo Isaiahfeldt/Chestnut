@@ -70,6 +70,10 @@ class TorchToggleListener(
                     // Respect tracker enabled flag
                     if (!tracker.options.enabled) continue
 
+                    // Determine event name first for disabled check
+                    val eventName = if (lit) "on" else "off"
+                    if (tracker.options.disabledEvents.contains(eventName)) continue
+
                     // Skip duplicate consecutive states
                     val last = tracker.lastTorchLit
                     if (last != null && last == lit) continue
@@ -87,7 +91,6 @@ class TorchToggleListener(
                     tracker.lastEventAtTick = now
 
                     // Render and enqueue webhook payload
-                    val eventName = if (lit) "on" else "off"
                     val rendered = TemplateRenderer.render(
                         tracker.templates[eventName],
                         tracker,

@@ -203,11 +203,82 @@ class TrackCommand(
                 }
                 "msg" -> {
                     if (args.size < 3) {
-                        sender.sendMessage("§eUsage: /edittracker $name msg <event> <template>")
+                        sender.sendMessage("§eUsage: /edittracker $name msg <event> <template> §7or§e /edittracker $name msg --clear [event|all] §7or§e --disable <event> §7or§e --enable <event>")
                         return true
                     }
-                    val event = args[2].lowercase()
-                    if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) {
+
+                    fun isClearFlag(s: String) = s.equals("--clear", true) || s.equals("clear", true) || s.equals("clear", true) || s.equals("CLEAR", true)
+                    fun isDisableFlag(s: String) = s.equals("--disable", true) || s.equals("disable", true) || s.equals("disabled", true) || s.equals("DISABLE", true) || s.equals("DISABLED", true)
+                    fun isEnableFlag(s: String) = s.equals("--enable", true) || s.equals("enable", true) || s.equals("enabled", true) || s.equals("ENABLE", true) || s.equals("ENABLED", true)
+
+                    val eventsLower = tracker.trigger.events.map { it.lowercase() }
+                    val third = args[2]
+
+                    // Global forms: /edittracker <name> msg --clear [event|all] | --disable <event> | --enable <event>
+                    if (isClearFlag(third)) {
+                        val target = args.getOrNull(3)?.lowercase()
+                        if (target == null || target == "all") {
+                            // Clear all custom templates for known events
+                            for (ev in eventsLower) tracker.templates.remove(ev)
+                            store.putAndSave(tracker)
+                            sender.sendMessage("§aCleared all custom message templates. Defaults will be used.")
+                        } else if (eventsLower.contains(target)) {
+                            tracker.templates.remove(target)
+                            store.putAndSave(tracker)
+                            sender.sendMessage("§aTemplate for '$target' cleared. Default will be used.")
+                            if (tracker.options.disabledEvents.contains(target)) {
+                                val triggerId = TriggerRegistry.descriptor(tracker.trigger).id
+                                sender.sendMessage("Template for '$target' updated for '$triggerId', though that event is currently disabled. Enable with /edittracker ${tracker.name} msg --enable $target")
+                            }
+                        } else {
+                            sender.sendMessage("§cInvalid event. Valid: ${tracker.trigger.events.joinToString(", ")}, or 'all'.")
+                        }
+                        return true
+                    } else if (isDisableFlag(third)) {
+                        val target = args.getOrNull(3)?.lowercase()
+                        if (target == null) {
+                            sender.sendMessage("§eUsage: /edittracker $name msg --disable <event>")
+                            return true
+                        }
+                        if (target == "all") {
+                            tracker.options.disabledEvents.addAll(eventsLower)
+                            store.putAndSave(tracker)
+                            sender.sendMessage("§eAll events disabled for this tracker.")
+                            return true
+                        }
+                        if (!eventsLower.contains(target)) {
+                            sender.sendMessage("§cInvalid event. Valid: ${tracker.trigger.events.joinToString(", ")}")
+                            return true
+                        }
+                        tracker.options.disabledEvents.add(target)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§eEvent '$target' disabled for this tracker.")
+                        return true
+                    } else if (isEnableFlag(third)) {
+                        val target = args.getOrNull(3)?.lowercase()
+                        if (target == null) {
+                            sender.sendMessage("§eUsage: /edittracker $name msg --enable <event>")
+                            return true
+                        }
+                        if (target == "all") {
+                            tracker.options.disabledEvents.removeAll(eventsLower.toSet())
+                            store.putAndSave(tracker)
+                            sender.sendMessage("§aAll events enabled for this tracker.")
+                            return true
+                        }
+                        if (!eventsLower.contains(target)) {
+                            sender.sendMessage("§cInvalid event. Valid: ${tracker.trigger.events.joinToString(", ")}")
+                            return true
+                        }
+                        tracker.options.disabledEvents.remove(target)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§aEvent '$target' enabled for this tracker.")
+                        return true
+                    }
+
+                    // Per-event editing path
+                    val event = third.lowercase()
+                    if (!eventsLower.contains(event)) {
                         sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}")
                         return true
                     }
@@ -215,13 +286,44 @@ class TrackCommand(
                         sendPlaceholderHelper(sender, tracker, event)
                         return true
                     }
-                    val template = joinTail(args, 3)
-                    tracker.templates[event] = template
+                    val templateRaw = joinTail(args, 3).trim()
+
+                    // Support CLEAR/--clear as template to revert to default
+                    if (isClearFlag(templateRaw)) {
+                        tracker.templates.remove(event)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§aTemplate for '$event' cleared. Default will be used.")
+                        if (tracker.options.disabledEvents.contains(event)) {
+                            val triggerId = TriggerRegistry.descriptor(tracker.trigger).id
+                            sender.sendMessage("Template for '$event' updated for '$triggerId', though that event is currently disabled. Enable with /edittracker ${tracker.name} msg --enable $event")
+                        }
+                        return true
+                    }
+                    // Support DISABLE/DISABLED/--disable and ENABLE as template tokens
+                    if (isDisableFlag(templateRaw)) {
+                        tracker.options.disabledEvents.add(event)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§eEvent '$event' disabled for this tracker.")
+                        return true
+                    }
+                    if (isEnableFlag(templateRaw)) {
+                        tracker.options.disabledEvents.remove(event)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§aEvent '$event' enabled for this tracker.")
+                        return true
+                    }
+
+                    // Set/preview template
+                    tracker.templates[event] = templateRaw
                     store.putAndSave(tracker)
                     sender.sendMessage("§aTemplate for '$event' updated for '${tracker.name}'.")
+                    if (tracker.options.disabledEvents.contains(event)) {
+                        val triggerId = TriggerRegistry.descriptor(tracker.trigger).id
+                        sender.sendMessage("Template for '$event' updated for '$triggerId', though that event is currently disabled. Enable with /edittracker ${tracker.name} msg --enable $event")
+                    }
                     val player = sender as? Player
                     val preview = TemplateRenderer.render(
-                        template,
+                        templateRaw,
                         tracker,
                         event,
                         TemplateRenderer.RenderOptions(
@@ -916,6 +1018,7 @@ class TrackCommand(
         sender.sendMessage("§e/deltracker <name|all> [--confirm] §7- Delete tracker (all = admin only)")
         sender.sendMessage("§e/edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail> §7- Edit hub")
         sender.sendMessage("§7Examples: §f/edittracker mailbox rename mailbox_v2 §7· §f/edittracker mailbox msg open \"<name> opened\"")
+        sender.sendMessage("§7Tip: Use §f/edittracker <name> msg --clear [event|all] §7to reset, or §f--disable/--enable <event> §7to toggle notifications per event.")
         if (sender.hasPermission("chestnut.admin")) sender.sendMessage("§e/chestnut <help|reload|status> §7- Admin tools")
         sender.sendMessage("§7Storage events: open, close · Redstone Torch events: on, off · Lectern events: insert_book, remove_book, page_change, open")
         sender.sendMessage("§7Placeholders: <name> <trigger> <event> <world> <x> <y> <z> <time> <state> <user> <uuid> <items> <page> <book_title> <book_author> <book_pages> <has_book>")
@@ -963,7 +1066,8 @@ class TrackCommand(
                         val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
                         val sub = args[1].lowercase(Locale.getDefault())
                         val events = t.trigger.events + if (sub == "color" || sub == "thumbnail") listOf("all") else emptyList()
-                        filter(events, args[2])
+                        val flags = if (sub == "msg") listOf("--clear", "--disable", "--enable") else emptyList()
+                        filter(events + flags, args[2])
                     }
                     else -> mutableListOf()
                 }
@@ -972,9 +1076,16 @@ class TrackCommand(
                     "thumbnail" -> filter(listOf("reset", "https://"), args[3])
                     "msg" -> {
                         val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
-                        val token = args.last()
-                        val raw = token.trimStart('"', '\'')
-                        if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
+                        val flag = args[2].lowercase(Locale.getDefault())
+                        val events = t.trigger.events + listOf("all")
+                        return when (flag) {
+                            "--clear", "--disable", "--enable" -> filter(events, args[3])
+                            else -> {
+                                val token = args.last()
+                                val raw = token.trimStart('"', '\'')
+                                if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
+                            }
+                        }
                     }
                     else -> mutableListOf()
                 }
