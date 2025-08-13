@@ -9,5 +9,9 @@ data class TrackerOptions(
     /**
      * Per-tracker rate limit in messages per minute. 0 disables per-tracker limiting.
      */
-    var ratelimitPerMinute: Int = 0
+    var ratelimitPerMinute: Int = 0,
+    /**
+     * Per-event disable list. Event keys are lowercase and must match Trigger.events.
+     */
+    val disabledEvents: MutableSet<String> = mutableSetOf()
 )

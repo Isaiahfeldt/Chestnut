@@ -78,7 +78,7 @@ class BindManager(
      * Starts a 'rebind session' (moving an existing tracker to a new block location).
      */
     fun startRebind(player: Player, name: String) {
-        val existing = store.get(name) ?: run {
+        val existing = store.getTrackerByName(name) ?: run {
             player.sendMessage("§cTracker '$name' not found.")
             return
         }
@@ -134,7 +134,7 @@ class BindManager(
         val z = loc.blockZ
 
         if (session.rebind) {
-            val tracker = store.get(session.name)
+            val tracker = store.getTrackerByName(session.name)
             if (tracker == null) {
                 event.player.sendMessage("§cTracker '${session.name}' no longer exists.")
             } else {

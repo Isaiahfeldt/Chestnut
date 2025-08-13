@@ -100,7 +100,7 @@ class TrackCommand(
                 return true
             }
 
-            if (store.exists(name)) {
+            if (store.isTrackerPresent(name)) {
                 sender.sendMessage("§cTracker with that name already exists.")
                 return true
             }
@@ -125,7 +125,7 @@ class TrackCommand(
                     sender.sendMessage("§cNo permission to delete all.")
                     return true
                 }
-                val names = store.all().map { it.name }.toList()
+                val names = store.getAllTrackers().map { it.name }.toList()
                 var count = 0
                 for (n in names) {
                     store.removeAndSave(n)
@@ -135,7 +135,7 @@ class TrackCommand(
                 return true
             }
 
-            val tracker = store.get(target)
+            val tracker = store.getTrackerByName(target)
             if (tracker == null) {
                 sender.sendMessage("§aTracker removed (not found).")
                 return true
@@ -150,12 +150,12 @@ class TrackCommand(
         }
         if (isCmd("edittracker", "edittrack")) {
             if (args.size < 2) {
-                sender.sendMessage("§eUsage: /edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail> [args]")
+                sender.sendMessage("§eUsage: /edittracker <name> <rename|title|description|msg|view|rebind|enable|disable|test|tp|info|color|thumbnail> [args]")
                 return true
             }
             val name = args[0]
             val sub = args[1].lowercase(Locale.getDefault())
-            val tracker = store.get(name) ?: run {
+            val tracker = store.getTrackerByName(name) ?: run {
                 sender.sendMessage("§cTracker not found.")
                 return true
             }
@@ -174,7 +174,7 @@ class TrackCommand(
                         sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -")
                         return true
                     }
-                    if (store.exists(newName)) {
+                    if (store.isTrackerPresent(newName)) {
                         sender.sendMessage("§cName already in use.")
                         return true
                     }
@@ -201,13 +201,89 @@ class TrackCommand(
                     store.putAndSave(tracker)
                     sender.sendMessage("§aDescription updated.")
                 }
+                "view" -> {
+                    sendView(sender, tracker)
+                }
                 "msg" -> {
                     if (args.size < 3) {
-                        sender.sendMessage("§eUsage: /edittracker $name msg <event> <template>")
+                        sender.sendMessage("§eUsage: /edittracker $name msg <event> <template> §7or§e /edittracker $name msg --clear [event|all] §7or§e --disable <event> §7or§e --enable <event>")
                         return true
                     }
-                    val event = args[2].lowercase()
-                    if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) {
+
+                    fun isClearFlag(s: String) = s.equals("--clear", true) || s.equals("clear", true) || s.equals("clear", true) || s.equals("CLEAR", true)
+                    fun isDisableFlag(s: String) = s.equals("--disable", true) || s.equals("disable", true) || s.equals("disabled", true) || s.equals("DISABLE", true) || s.equals("DISABLED", true)
+                    fun isEnableFlag(s: String) = s.equals("--enable", true) || s.equals("enable", true) || s.equals("enabled", true) || s.equals("ENABLE", true) || s.equals("ENABLED", true)
+
+                    val eventsLower = tracker.trigger.events.map { it.lowercase() }
+                    val third = args[2]
+
+                    // Global forms: /edittracker <name> msg --clear [event|all] | --disable <event> | --enable <event>
+                    if (isClearFlag(third)) {
+                        val target = args.getOrNull(3)?.lowercase()
+                        if (target == null || target == "all") {
+                            // Clear all custom templates for known events
+                            for (ev in eventsLower) tracker.templates.remove(ev)
+                            store.putAndSave(tracker)
+                            sender.sendMessage("§aCleared all custom message templates. Defaults will be used.")
+                        } else if (eventsLower.contains(target)) {
+                            tracker.templates.remove(target)
+                            store.putAndSave(tracker)
+                            if (tracker.options.disabledEvents.contains(target)) {
+                                val triggerId = TriggerRegistry.descriptor(tracker.trigger).id
+                                sender.sendMessage("§aTemplate for '$target' cleared. Default will be used, §4though that event is currently disabled.")
+                                sendEnableClickableHint(sender, tracker.name, target)
+                            } else {
+                                sender.sendMessage("§aTemplate for '$target' cleared. Default will be used.")
+                            }
+                        } else {
+                            sender.sendMessage("§cInvalid event. Valid: ${tracker.trigger.events.joinToString(", ")}, or 'all'.")
+                        }
+                        return true
+                    } else if (isDisableFlag(third)) {
+                        val target = args.getOrNull(3)?.lowercase()
+                        if (target == null) {
+                            sender.sendMessage("§eUsage: /edittracker $name msg --disable <event>")
+                            return true
+                        }
+                        if (target == "all") {
+                            tracker.options.disabledEvents.addAll(eventsLower)
+                            store.putAndSave(tracker)
+                            sender.sendMessage("§eAll events disabled for this tracker.")
+                            return true
+                        }
+                        if (!eventsLower.contains(target)) {
+                            sender.sendMessage("§cInvalid event. Valid: ${tracker.trigger.events.joinToString(", ")}")
+                            return true
+                        }
+                        tracker.options.disabledEvents.add(target)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§eEvent '$target' disabled for this tracker.")
+                        return true
+                    } else if (isEnableFlag(third)) {
+                        val target = args.getOrNull(3)?.lowercase()
+                        if (target == null) {
+                            sender.sendMessage("§eUsage: /edittracker $name msg --enable <event>")
+                            return true
+                        }
+                        if (target == "all") {
+                            tracker.options.disabledEvents.removeAll(eventsLower.toSet())
+                            store.putAndSave(tracker)
+                            sender.sendMessage("§aAll events enabled for this tracker.")
+                            return true
+                        }
+                        if (!eventsLower.contains(target)) {
+                            sender.sendMessage("§cInvalid event. Valid: ${tracker.trigger.events.joinToString(", ")}")
+                            return true
+                        }
+                        tracker.options.disabledEvents.remove(target)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§aEvent '$target' enabled for this tracker.")
+                        return true
+                    }
+
+                    // Per-event editing path
+                    val event = third.lowercase()
+                    if (!eventsLower.contains(event)) {
                         sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}")
                         return true
                     }
@@ -215,13 +291,49 @@ class TrackCommand(
                         sendPlaceholderHelper(sender, tracker, event)
                         return true
                     }
-                    val template = joinTail(args, 3)
-                    tracker.templates[event] = template
+                    val templateRaw = joinTail(args, 3).trim()
+
+                    // Support CLEAR/--clear as template to revert to default
+                    if (isClearFlag(templateRaw)) {
+                        tracker.templates.remove(event)
+                        store.putAndSave(tracker)
+                        if (tracker.options.disabledEvents.contains(event)) {
+                            val triggerId = TriggerRegistry.descriptor(tracker.trigger).id
+                            sender.sendMessage("§aTemplate for '$event' updated for '$triggerId', §4though that event is currently disabled.")
+                            sendEnableClickableHint(sender, tracker.name, event)
+                        } else {
+                            sender.sendMessage("§aTemplate for '$event' cleared. Default will be used.")
+                        }
+                        return true
+                    }
+                    // Support DISABLE/DISABLED/--disable and ENABLE as template tokens
+                    if (isDisableFlag(templateRaw)) {
+                        tracker.options.disabledEvents.add(event)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§eEvent '$event' disabled for this tracker.")
+                        return true
+                    }
+                    if (isEnableFlag(templateRaw)) {
+                        tracker.options.disabledEvents.remove(event)
+                        store.putAndSave(tracker)
+                        sender.sendMessage("§aEvent '$event' enabled for this tracker.")
+                        return true
+                    }
+
+                    // Set/preview template
+                    tracker.templates[event] = templateRaw
                     store.putAndSave(tracker)
-                    sender.sendMessage("§aTemplate for '$event' updated for '${tracker.name}'.")
+                    if (tracker.options.disabledEvents.contains(event)) {
+                        val triggerId = TriggerRegistry.descriptor(tracker.trigger).id
+                        sender.sendMessage("§aTemplate for '$event' updated for '$triggerId', §4though that event is currently disabled.")
+                        sendEnableClickableHint(sender, tracker.name, event)
+
+                    } else {
+                        sender.sendMessage("§aTemplate for '$event' updated for '${tracker.name}'.")
+                    }
                     val player = sender as? Player
                     val preview = TemplateRenderer.render(
-                        template,
+                        templateRaw,
                         tracker,
                         event,
                         TemplateRenderer.RenderOptions(
@@ -364,7 +476,7 @@ class TrackCommand(
             return true
         }
         if (isCmd("trackerlist", "trackers")) {
-            val all = store.all().sortedBy { it.name.lowercase() }
+            val all = store.getAllTrackers().sortedBy { it.name.lowercase() }
             if (all.isEmpty()) { sender.sendMessage("§7No trackers."); return true }
             val pageSize = 5
             val total = all.size
@@ -395,7 +507,7 @@ class TrackCommand(
                     sender.sendMessage("§aChestnut config reloaded. Webhook URL set: $urlOk§a. Embed color: ${config.embedColor}.")
                 }
                 "status" -> {
-                    val total = store.all().size
+                    val total = store.getAllTrackers().size
                     val urlOk = if (config.webhookUrl.isNotBlank()) "set" else "unset"
                     sender.sendMessage("§aChestnut status: trackers=$total, webhook=$urlOk")
                 }
@@ -418,29 +530,50 @@ class TrackCommand(
                 if (sender !is Player) { sender.sendMessage("§cOnly players can bind trackers."); return true }
                 if (!sender.hasPermission("chestnut.use") && !sender.hasPermission("chestnut.admin")) { sender.sendMessage("§cNo permission."); return true }
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track add <name> <trigger>"); return true }
+
                 val name = args[1]
                 val trigger = TriggerRegistry.resolve(args[2]) ?: run { sender.sendMessage("§cUnknown trigger. Valid: ${TriggerRegistry.allTriggerInputs().joinToString(", ")}"); return true }
+
                 if (!namePattern.matcher(name).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-                if (store.exists(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
+                if (store.isTrackerPresent(name)) { sender.sendMessage("§cTracker with that name already exists."); return true }
+
                 bind.start(sender, name, trigger)
                 return true
             }
             "msg" -> {
-                if (args.size < 3) { sender.sendMessage("§eUsage: /track msg <name> <event> <template>"); return true }
+                if (args.size < 3) {
+                    sender.sendMessage("§eUsage: /track msg <name> <event> <template>")
+                    return true
+                }
+
                 val name = args[1]
-                val tracker = store.get(name) ?: run { sender.sendMessage("§cTracker not found."); return true }
-                if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
+                val tracker = store.getTrackerByName(name) ?: run {
+                    sender.sendMessage("§cTracker not found.")
+                    return true
+                }
+
+                if (!canManage(sender, tracker)) {
+                    sender.sendMessage("§cYou don't own this tracker.")
+                    return true
+                }
                 val event = args[2].lowercase()
-                if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) { sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}"); return true }
+
+                if (!tracker.trigger.events.map { it.lowercase() }.contains(event)) {
+                    sender.sendMessage("§cInvalid event for ${tracker.trigger}: ${tracker.trigger.events.joinToString(", ")}")
+                    return true
+                }
+
                 // If no template provided, show a helper with placeholders and examples
                 if (args.size == 3) {
                     sendPlaceholderHelper(sender, tracker, event)
                     return true
                 }
+
                 val template = joinTail(args, 3)
                 tracker.templates[event] = template
                 store.putAndSave(tracker)
                 sender.sendMessage("§aTemplate for '$event' updated for '${tracker.name}'.")
+
                 // Local preview after save (do not send to Discord)
                 val player = sender as? Player
                 val preview = TemplateRenderer.render(
@@ -455,15 +588,13 @@ class TrackCommand(
                         testPrefix = ""
                     )
                 )
+
                 sender.sendMessage("§7Preview: §f$preview")
                 return true
             }
             "list" -> {
-                val all = store.all().sortedBy { it.name.lowercase() }
-                if (all.isEmpty()) {
-                    sender.sendMessage("§7No trackers.")
-                    return true
-                }
+                val all = store.getAllTrackers().sortedBy { it.name.lowercase() }
+                if (all.isEmpty()) {  sender.sendMessage("§7No trackers."); return true }
 
                 val pageSize = 5
                 val total = all.size
@@ -485,12 +616,9 @@ class TrackCommand(
                 return true
             }
             "info" -> {
-                if (args.size < 2) {
-                    sender.sendMessage("§eUsage: /track info <name>")
-                    return true
-                }
+                if (args.size < 2) { sender.sendMessage("§eUsage: /track info <name>"); return true }
 
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val t = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (sender is Player) sendInfoPanel(sender, t) else sendInfoConsole(sender, t)
                 return true
             }
@@ -498,7 +626,7 @@ class TrackCommand(
                 if (sender !is Player) { sender.sendMessage("§cOnly players can teleport."); return true }
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track tp <name>"); return true }
 
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou can't use this tracker."); return true }
 
                 val world = plugin.server.getWorld(tracker.world)
@@ -513,32 +641,26 @@ class TrackCommand(
                 if (sender !is Player) { sender.sendMessage("§cOnly players can rebind trackers."); return true }
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track rebind <name>"); return true }
 
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val t = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
 
                 bind.startRebind(sender, t.name)
                 return true
             }
             "rename" -> {
-                if (args.size < 3) {
-                    sender.sendMessage("§eUsage: /track rename <oldName> <newName>")
-                    return true
-                }
-
-                val t = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                if (args.size < 3) { sender.sendMessage("§eUsage: /track rename <oldName> <newName>"); return true }
+                val t = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, t)) { sender.sendMessage("§cYou don't own this tracker."); return true }
-
                 val newName = args[2]
                 if (!namePattern.matcher(newName).matches()) { sender.sendMessage("§cInvalid name. 1–32 chars: letters, digits, space, _ . -"); return true }
-                if (store.exists(newName)) { sender.sendMessage("§cName already in use."); return true }
-
+                if (store.isTrackerPresent(newName)) { sender.sendMessage("§cName already in use."); return true }
                 val ok = store.rename(t.name, newName)
                 if (ok) sender.sendMessage("§aRenamed '${t.name}' to '$newName'.") else sender.sendMessage("§cRename failed.")
                 return true
             }
             "title" -> {
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track title <name> <title> (use \"\" to clear)"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val title = joinTail(args, 2)
                 tracker.title = if (title.isBlank()) null else title
@@ -548,7 +670,7 @@ class TrackCommand(
             }
             "description" -> {
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track description <name> <text> (use \"\" to clear)"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val desc = joinTail(args, 2)
                 tracker.description = if (desc.isBlank()) null else desc
@@ -558,7 +680,7 @@ class TrackCommand(
             }
             "remove" -> {
                 if (args.size < 2) { sender.sendMessage("§eUsage: /track remove <name>"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§aTracker removed (not found)."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§aTracker removed (not found)."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 store.removeAndSave(tracker.name)
                 sender.sendMessage("§aTracker '${tracker.name}' removed.")
@@ -567,7 +689,7 @@ class TrackCommand(
             "test" -> {
                 if (!config.enableTestCommand) { sender.sendMessage("§cTest command is disabled."); return true }
                 if (args.size < 3) { sender.sendMessage("§eUsage: /track test <name> <event>"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 val event = args[2].lowercase()
                 val template = tracker.templates[event]
@@ -590,7 +712,7 @@ class TrackCommand(
             }
             "set" -> {
                 if (args.size < 4) { sender.sendMessage("§eUsage: /track set <name> <key> <value>"); return true }
-                val tracker = store.get(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
+                val tracker = store.getTrackerByName(args[1]) ?: run { sender.sendMessage("§cTracker not found."); return true }
                 if (!canManage(sender, tracker)) { sender.sendMessage("§cYou don't own this tracker."); return true }
                 when (args[2].lowercase()) {
                     "enabled" -> tracker.options.enabled = args[3].toBooleanStrictOrNull() ?: return badValue(sender)
@@ -804,6 +926,25 @@ class TrackCommand(
     }
 
     /**
+     * Sends a clickable "Enable with /edittracker ..." hint to players, or a plain string to non-players.
+     */
+    private fun sendEnableClickableHint(sender: CommandSender, trackerName: String, event: String) {
+        val cmd = "/edittracker $trackerName msg --enable $event"
+        val component = Component.text("Enable with ", NamedTextColor.GRAY)
+            .append(
+                Component.text(cmd, NamedTextColor.YELLOW)
+                    .clickEvent(ClickEvent.runCommand(cmd))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to run: $cmd", NamedTextColor.GRAY)))
+            )
+        val player = sender as? Player
+        if (player != null) {
+            player.sendMessage(component)
+        } else {
+            sender.sendMessage("§fEnable with §7$cmd")
+        }
+    }
+
+    /**
      * Sends a rich, interactive info panel to a player with actionable buttons
      * (teleport, test, enable/disable, delete, rebind, and edit operations).
      */
@@ -899,6 +1040,105 @@ class TrackCommand(
      * Sends a concise help overview listing modern commands and legacy notes.
      * Includes examples and admin-only entries when applicable.
      */
+    private fun sendView(sender: CommandSender, t: Tracker) {
+        val player = sender as? Player
+        val descriptor = TriggerRegistry.descriptor(t.trigger)
+        val events = descriptor.events
+        if (player != null) {
+            val header = Component.text("Events for ", TextColor.fromHexString("#24fb9c"))
+                .append(Component.text(t.name, TextColor.fromHexString("#24fb9c")).decorate(TextDecoration.BOLD))
+                .append(Component.text(" (", TextColor.fromHexString("#24fb9c")))
+                .append(Component.text(descriptor.id, TextColor.fromHexString("#24fb9c")))
+                .append(Component.text(")", TextColor.fromHexString("#24fb9c")))
+            player.sendMessage(header)
+            for (ev in events) {
+                val key = ev.lowercase(Locale.getDefault())
+                val disabled = t.options.disabledEvents.contains(key)
+                val symbol = if (disabled) "✗" else "✓"
+                val symColor = if (disabled) NamedTextColor.RED else NamedTextColor.GREEN
+                val template = t.templates[key] ?: TemplateRenderer.defaultTemplate(t.trigger, ev)
+                val line = Component.text("$symbol ", symColor)
+                    .append(Component.text(ev, NamedTextColor.WHITE))
+                    .append(Component.text(" - ", NamedTextColor.GRAY))
+                    .append(buildColoredTemplateComponent(template))
+                player.sendMessage(line)
+            }
+        } else {
+            sender.sendMessage("§fEvents for §b${t.name}§f (${descriptor.id}):")
+            for (ev in events) {
+                val key = ev.lowercase(Locale.getDefault())
+                val disabled = t.options.disabledEvents.contains(key)
+                val symbol = if (disabled) "X" else "✓"
+                val template = t.templates[key] ?: TemplateRenderer.defaultTemplate(t.trigger, ev)
+                val tpl = buildLegacyColoredTemplate(template)
+                sender.sendMessage("${if (disabled) "§c$symbol" else "§a$symbol"} §f$ev §7- $tpl")
+            }
+        }
+    }
+
+    // Build a Component where placeholders like <name> are gray (§7) and other text is white (§f)
+    private fun buildColoredTemplateComponent(template: String): Component {
+        var comp = Component.empty()
+        var i = 0
+        while (i < template.length) {
+            val start = template.indexOf('<', i)
+            if (start == -1) {
+                if (i < template.length) comp = comp.append(Component.text(template.substring(i), NamedTextColor.WHITE))
+                break
+            }
+            if (start > i) {
+                comp = comp.append(Component.text(template.substring(i, start), NamedTextColor.WHITE))
+            }
+            val end = template.indexOf('>', start + 1)
+            if (end == -1) {
+                // No closing '>' found; treat rest as normal text
+                comp = comp.append(Component.text(template.substring(start), NamedTextColor.WHITE))
+                break
+            }
+            comp = comp.append(Component.text(template.substring(start, end + 1), NamedTextColor.GRAY))
+            i = end + 1
+        }
+        return comp
+    }
+
+    // Build a legacy-colored string with §f for normal text and §7 for placeholders
+    private fun buildLegacyColoredTemplate(template: String): String {
+        val sb = StringBuilder()
+        var i = 0
+        var current = 'x' // unknown to force initial set
+        fun setColor(code: Char) {
+            if (current != code) {
+                sb.append('§').append(code)
+                current = code
+            }
+        }
+        setColor('f')
+        while (i < template.length) {
+            val start = template.indexOf('<', i)
+            if (start == -1) {
+                if (i < template.length) {
+                    setColor('f')
+                    sb.append(template.substring(i))
+                }
+                break
+            }
+            if (start > i) {
+                setColor('f')
+                sb.append(template.substring(i, start))
+            }
+            val end = template.indexOf('>', start + 1)
+            if (end == -1) {
+                setColor('f')
+                sb.append(template.substring(start))
+                break
+            }
+            setColor('7')
+            sb.append(template.substring(start, end + 1))
+            i = end + 1
+        }
+        return sb.toString()
+    }
+
     private fun sendHelp(sender: CommandSender) {
         sender.sendMessage("§6Chestnut commands:")
         sender.sendMessage("§e/trackerlist [page] §7- List your trackers (alias: /trackers)")
@@ -906,6 +1146,7 @@ class TrackCommand(
         sender.sendMessage("§e/deltracker <name|all> [--confirm] §7- Delete tracker (all = admin only)")
         sender.sendMessage("§e/edittracker <name> <rename|title|description|msg|rebind|enable|disable|test|tp|info|color|thumbnail> §7- Edit hub")
         sender.sendMessage("§7Examples: §f/edittracker mailbox rename mailbox_v2 §7· §f/edittracker mailbox msg open \"<name> opened\"")
+        sender.sendMessage("§7Tip: Use §f/edittracker <name> msg --clear [event|all] §7to reset, or §f--disable/--enable <event> §7to toggle notifications per event.")
         if (sender.hasPermission("chestnut.admin")) sender.sendMessage("§e/chestnut <help|reload|status> §7- Admin tools")
         sender.sendMessage("§7Storage events: open, close · Redstone Torch events: on, off · Lectern events: insert_book, remove_book, page_change, open")
         sender.sendMessage("§7Placeholders: <name> <trigger> <event> <world> <x> <y> <z> <time> <state> <user> <uuid> <items> <page> <book_title> <book_author> <book_pages> <has_book>")
@@ -940,20 +1181,21 @@ class TrackCommand(
         }
         if (isCmd("deltracker", "delt")) {
             return when (args.size) {
-                0, 1 -> (store.all().map { it.name } + "all").sorted().toMutableList()
+                0, 1 -> (store.getAllTrackers().map { it.name } + "all").sorted().toMutableList()
                 else -> filter(listOf("--confirm"), args.last())
             }
         }
         if (isCmd("edittracker", "edittrack")) {
             return when (args.size) {
-                0, 1 -> store.all().map { it.name }.toMutableList()
-                2 -> filter(listOf("rename", "title", "description", "msg", "rebind", "enable", "disable", "test", "tp", "info", "color", "thumbnail"), args[1])
+                0, 1 -> store.getAllTrackers().map { it.name }.toMutableList()
+                2 -> filter(listOf("rename", "title", "description", "msg", "view", "rebind", "enable", "disable", "test", "tp", "info", "color", "thumbnail"), args[1])
                 3 -> when (args[1].lowercase(Locale.getDefault())) {
                     "test", "msg", "color", "thumbnail" -> {
-                        val t = store.get(args[0]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
                         val sub = args[1].lowercase(Locale.getDefault())
                         val events = t.trigger.events + if (sub == "color" || sub == "thumbnail") listOf("all") else emptyList()
-                        filter(events, args[2])
+                        val flags = if (sub == "msg") listOf("--clear", "--disable", "--enable") else emptyList()
+                        filter(events + flags, args[2])
                     }
                     else -> mutableListOf()
                 }
@@ -961,17 +1203,24 @@ class TrackCommand(
                     "color" -> filter(listOf("reset", "#FFCC00", "0x00FF00", "16711680"), args[3])
                     "thumbnail" -> filter(listOf("reset", "https://"), args[3])
                     "msg" -> {
-                        val t = store.get(args[0]) ?: return mutableListOf()
-                        val token = args.last()
-                        val raw = token.trimStart('"', '\'')
-                        if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
+                        val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
+                        val flag = args[2].lowercase(Locale.getDefault())
+                        val events = t.trigger.events + listOf("all")
+                        return when (flag) {
+                            "--clear", "--disable", "--enable" -> filter(events, args[3])
+                            else -> {
+                                val token = args.last()
+                                val raw = token.trimStart('"', '\'')
+                                if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
+                            }
+                        }
                     }
                     else -> mutableListOf()
                 }
                 else -> {
                     // When editing a message template, allow placeholder suggestions beyond the 4th argument
                     if (args[1].equals("msg", ignoreCase = true)) {
-                        val t = store.get(args[0]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[0]) ?: return mutableListOf()
                         val token = args.last()
                         val raw = token.trimStart('"', '\'')
                         return if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
@@ -987,7 +1236,7 @@ class TrackCommand(
             }
         }
         if (isCmd("trackerlist", "trackers")) {
-            val total = store.all().size
+            val total = store.getAllTrackers().size
             val pageSize = 5
             val maxPage = if (total == 0) 1 else ((total - 1) / pageSize) + 1
             val pages = (1..maxPage).map { it.toString() }
@@ -1010,13 +1259,13 @@ class TrackCommand(
             }
             "msg" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     3 -> {
-                        val t = store.get(args[1]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[1]) ?: return mutableListOf()
                         filter(t.trigger.events, args[2])
                     }
                     else -> {
-                        val t = store.get(args[1]) ?: return mutableListOf()
+                        val t = store.getTrackerByName(args[1]) ?: return mutableListOf()
                         val token = args.last()
                         val raw = token.trimStart('"', '\'')
                         if (raw.startsWith("<")) filter(availablePlaceholders(t.trigger), raw) else mutableListOf()
@@ -1025,7 +1274,7 @@ class TrackCommand(
             }
             "set" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     3 -> filter(listOf("enabled", "debounceTicks", "ratelimitPerMinute"), args[2])
                     4 -> when (args[2].lowercase()) {
                         "enabled" -> filter(listOf("true", "false"), args[3])
@@ -1036,13 +1285,13 @@ class TrackCommand(
             }
             "info", "tp", "rebind", "remove", "test", "title", "description" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     else -> mutableListOf()
                 }
             }
             "rename" -> {
                 return when (args.size) {
-                    2 -> filter(store.all().map { it.name }, args[1])
+                    2 -> filter(store.getAllTrackers().map { it.name }, args[1])
                     else -> mutableListOf()
                 }
             }
