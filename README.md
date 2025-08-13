@@ -124,5 +124,11 @@ URL, and rate limits. The file includes comments for each option.
 **Q: Why don’t my alerts look like the example screenshots?**
 <br>Out of the box, Chestnut uses simple default messages without custom colors or thumbnails. The examples in the screenshots use customized settings configured with `/edittracker` commands.
 
+**Q: What happens if the block I’m tracking is destroyed or moved?**
+<br>Chestnut tracks blocks by their exact position, not by what type of block is there. So if you break a tracked chest and replace it with a barrel (or anything else) in the same spot, the tracker will still be active and may respond to the new block. If a block is moved or removed entirely, the tracker will keep listening at that location until you delete or reassign it.
+
+**Q: Why does Chestnut let me target non-supported blocks like grass or ladders?**
+<br>Because Chestnut only binds to the exact XYZ location of the block you right-click, it doesn’t really care what the block is. This means you can use any block, even ones that won’t actually trigger events, as a placeholder. For example, you could set a tracker on a temporary block, remove it later, and then place something else there for tracking without re-running the command.
+
 **Q: I found a bunch of bugs! 🐛**
 <br>lol yeah… this is my first plugin :) i’m still figuring stuff out... 
