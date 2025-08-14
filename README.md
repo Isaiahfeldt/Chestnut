@@ -1,4 +1,4 @@
-<h1 align="center">Chestnut</h1>
+# Chestnut
 
 <p align="center">
 	<a href="https://modrinth.com/plugin/Chestnut"><img alt="modrinth" height="40" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/available/modrinth_vector.svg"></a>
